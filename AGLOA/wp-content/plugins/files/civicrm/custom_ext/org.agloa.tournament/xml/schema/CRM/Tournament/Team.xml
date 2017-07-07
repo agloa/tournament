@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<!DOCTYPE table>
+<table>
+	<base>CRM/Tournament</base>
+	<class>Team</class>
+	<name>team</name>
+	<comment>a team is a group of players</comment>
+	<add>4.4</add>
+	<log>true</log>
+
+	<field>
+		<name>id</name>
+		<type>int unsigned</type>
+		<required>true</required>
+		<comment>Unique machine-readable ID</comment>
+		<add>4.4</add>
+	</field>
+	<primaryKey>
+		<name>id</name>
+		<autoincrement>false</autoincrement>
+	</primaryKey>
+
+	<field>
+		<name>name</name>
+		<type>varchar</type>
+		<length>64</length>
+		<comment>Internal name</comment>
+		<add>4.4</add>
+	</field>
+
+	<field>
+		<name>title</name>
+		<type>varchar</type>
+		<length>64</length>
+		<comment>External name</comment>
+		<add>4.4</add>
+	</field>
+
+	<field>
+		<name>description</name>
+		<type>text</type>
+		<comment>Optional verbose description</comment>
+		<html>
+			<type>TextArea</type>
+			<rows>5</rows>
+			<cols>80</cols>
+		</html>
+		<add>1.4</add>
+	</field>
+
+	<field>
+		<name>is_active</name>
+		<type>boolean</type>
+		<comment>Is this entry active?</comment>
+		<add>4.4</add>
+	</field>
+  
+  <field>
+    <name>created_id</name>
+    <type>int unsigned</type>
+    <comment>ID of user who created this record</comment>
+    <add>4.4</add>
+  </field>
+  
+  <field>
+    <name>modified_id</name>
+    <type>int unsigned</type>
+    <comment>ID of user who modified this record</comment>
+    <add>4.4</add>
+  </field>
+  
+</table>
