@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+
+<table>
+  <base>CRM/Tournament</base>
+  <class>TournamentSponsor</class>
+  <name>tournament_sponsor</name>
+  <comment>modeled on civicrm organization</comment>
+  <add>4.4</add>
+  <log>true</log>
+
+  <field>
+    <name>id</name>
+    <type>varchar</type>
+    <length>20</length>
+    <required>true</required>
+    <comment>unique, machine readable identifier</comment>
+    <add>4.4</add>
+  </field>
+  <primaryKey>
+    <name>id</name>
+    <autoincrement>true</autoincrement>
+  </primaryKey>
+
+  <field>
+    <name>label</name>
+    <type>varchar</type>
+    <length>50</length>
+    <required>true</required>
+    <comment>unique, human readable identifier</comment>
+    <add>4.4</add>
+  </field>
+  
+  <index>
+    <name>label</name>
+    <fieldName>label</fieldName>
+    <unique>true</unique>
+    <add>4.4</add>
+  </index>
+
+</table>

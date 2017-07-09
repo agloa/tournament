@@ -2,77 +2,40 @@
 
 class CRM_Tournament_Form_Report_Team extends CRM_Report_Form {
 
-  protected $_addressField = FALSE;
-
-  protected $_emailField = FALSE;
-
   protected $_summary = NULL;
-
-  protected $_customGroupExtends = array('Group');
-  protected $_customGroupGroupBy = FALSE; 
   
   function __construct() {
     $this->_columns = array(
-      'civicrm_contact' => array(
-        'dao' => 'CRM_Contact_DAO_Contact',
+      'team' => array(
+        'dao' => 'CRM_Team_DAO_Team',
         'fields' => array(
-          'sort_name' => array(
-            'title' => ts('Contact Name'),
+          'id' => array(
+            'title' => ts('ID'),
             'required' => TRUE,
             'default' => TRUE,
             'no_repeat' => TRUE,
           ),
-          'id' => array(
-            'no_display' => TRUE,
+          'title' => array(
             'required' => TRUE,
-          ),
-          'first_name' => array(
-            'title' => ts('First Name'),
+            'title' => ts('Name'),
             'no_repeat' => TRUE,
           ),
-          'id' => array(
-            'no_display' => TRUE,
-            'required' => TRUE,
-          ),
-          'last_name' => array(
-            'title' => ts('Last Name'),
-            'no_repeat' => TRUE,
-          ),
-          'id' => array(
-            'no_display' => TRUE,
-            'required' => TRUE,
+          'created_id' => array(
+            'title' => ts('Created By'),
           ),
         ),
         'filters' => array(
-          'sort_name' => array(
-            'title' => ts('Contact Name'),
+          'title' => array(
+            'title' => ts('Name'),
             'operator' => 'like',
           ),
           'id' => array(
-            'no_display' => TRUE,
           ),
         ),
-        'grouping' => 'contact-fields',
-      ),
-      'civicrm_address' => array(
-        'dao' => 'CRM_Core_DAO_Address',
-        'fields' => array(
-          'street_address' => NULL,
-          'city' => NULL,
-          'postal_code' => NULL,
-          'state_province_id' => array('title' => ts('State/Province')),
-          'country_id' => array('title' => ts('Country')),
-        ),
-        'grouping' => 'contact-fields',
-      ),
-      'civicrm_email' => array(
-        'dao' => 'CRM_Core_DAO_Email',
-        'fields' => array('email' => NULL),
-        'grouping' => 'contact-fields',
       ),
     );
-    $this->_groupFilter = TRUE;
-    $this->_tagFilter = TRUE;
+    /* $this->_groupFilter = TRUE;
+    $this->_tagFilter = TRUE; */
     parent::__construct();
   }
 
@@ -90,13 +53,7 @@ class CRM_Tournament_Form_Report_Team extends CRM_Report_Form {
           if (CRM_Utils_Array::value('required', $field) ||
             CRM_Utils_Array::value($fieldName, $this->_params['fields'])
           ) {
-            if ($tableName == 'civicrm_address') {
-              $this->_addressField = TRUE;
-            }
-            elseif ($tableName == 'civicrm_email') {
-              $this->_emailField = TRUE;
-            }
-            $select[] = "{$field['dbAlias']} as {$tableName}_{$fieldName}";
+            $select[] = "$fieldName as {$tableName}_{$fieldName}";
             $this->_columnHeaders["{$tableName}_{$fieldName}"]['title'] = $field['title'];
             $this->_columnHeaders["{$tableName}_{$fieldName}"]['type'] = CRM_Utils_Array::value('type', $field);
           }
@@ -110,25 +67,7 @@ class CRM_Tournament_Form_Report_Team extends CRM_Report_Form {
   function from() {
     $this->_from = NULL;
 
-    $this->_from = " FROM  civicrm_contact {$this->_aliases['civicrm_contact']} {$this->_aclFrom}";
-
-
-    //used when address field is selected
-    if ($this->_addressField) {
-      $this->_from .= "
-             LEFT JOIN civicrm_address {$this->_aliases['civicrm_address']}
-                       ON {$this->_aliases['civicrm_contact']}.id =
-                          {$this->_aliases['civicrm_address']}.contact_id AND
-                          {$this->_aliases['civicrm_address']}.is_primary = 1\n";
-    }
-    //used when email field is selected
-    if ($this->_emailField) {
-      $this->_from .= "
-              LEFT JOIN civicrm_email {$this->_aliases['civicrm_email']}
-                        ON {$this->_aliases['civicrm_contact']}.id =
-                           {$this->_aliases['civicrm_email']}.contact_id AND
-                           {$this->_aliases['civicrm_email']}.is_primary = 1\n";
-    }
+    $this->_from = " FROM team {$this->_aliases['team']} {$this->_aclFrom}";
   }
 
   function where() {
@@ -180,7 +119,7 @@ class CRM_Tournament_Form_Report_Team extends CRM_Report_Form {
   }
 
   function orderBy() {
-    $this->_orderBy = " ORDER BY {$this->_aliases['civicrm_contact']}.sort_name, {$this->_aliases['civicrm_contact']}.id, {$this->_aliases['civicrm_membership']}.membership_type_id";
+    //$this->_orderBy = " ORDER BY {$this->_aliases['team']}.title";
   }
 
   function postProcess() {
@@ -188,7 +127,7 @@ class CRM_Tournament_Form_Report_Team extends CRM_Report_Form {
     $this->beginPostProcess();
 
     // get the acl clauses built before we assemble the query
-    $this->buildACLClause($this->_aliases['civicrm_contact']);
+    $this->buildACLClause($this->_aliases['team']);
     $sql = $this->buildQuery(TRUE);
 
     $rows = array();
@@ -223,30 +162,16 @@ class CRM_Tournament_Form_Report_Team extends CRM_Report_Form {
         }
       }
 
-      if (array_key_exists('civicrm_address_state_province_id', $row)) {
-        if ($value = $row['civicrm_address_state_province_id']) {
-          $rows[$rowNum]['civicrm_address_state_province_id'] = CRM_Core_PseudoConstant::stateProvince($value, FALSE);
-        }
-        $entryFound = TRUE;
-      }
-
-      if (array_key_exists('civicrm_address_country_id', $row)) {
-        if ($value = $row['civicrm_address_country_id']) {
-          $rows[$rowNum]['civicrm_address_country_id'] = CRM_Core_PseudoConstant::country($value, FALSE);
-        }
-        $entryFound = TRUE;
-      }
-
-      if (array_key_exists('civicrm_contact_sort_name', $row) &&
-        $rows[$rowNum]['civicrm_contact_sort_name'] &&
-        array_key_exists('civicrm_contact_id', $row)
+      if (array_key_exists('title', $row) &&
+        $rows[$rowNum]['title'] &&
+        array_key_exists('id', $row)
       ) {
-        $url = CRM_Utils_System::url("civicrm/contact/view",
-          'reset=1&cid=' . $row['civicrm_contact_id'],
+        $url = CRM_Utils_System::url("civicrm/team/view",
+          'reset=1&tid=' . $row['id'],
           $this->_absoluteUrl
         );
-        $rows[$rowNum]['civicrm_contact_sort_name_link'] = $url;
-        $rows[$rowNum]['civicrm_contact_sort_name_hover'] = ts("View Contact Summary for this Contact.");
+        $rows[$rowNum]['title_link'] = $url;
+        $rows[$rowNum]['title_hover'] = ts("View Team.");
         $entryFound = TRUE;
       }
 

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+
+<table>
+  <base>CRM/Tournament</base>
+  <class>Tournament</class>
+  <name>civicrm_tournament</name>
+  <comment>FIXME</comment>
+  <add>4.4</add>
+  <log>true</log>
+
+  <field>
+    <name>id</name>
+    <type>varchar</type>
+    <length>64</length>
+    <required>true</required>
+    <comment>Unique Tournament ID</comment>
+    <add>4.4</add>
+  </field>
+  <primaryKey>
+    <name>id</name>
+  </primaryKey>
+
+  <field>
+    <name>title</name>
+    <type>varchar</type>
+    <length>255</length>
+    <required>true</required>
+    <comment>External name</comment>
+    <add>4.4</add>
+  </field>
+
+  <field>
+    <name>description</name>
+    <type>varchar</type>
+    <length>255</length>
+    <comment>Optional verbose description</comment>   
+    <html>
+      <type>TextArea</type>
+      <rows>5</rows>
+      <cols>80</cols>
+    </html>
+    <add>4.4</add>
+  </field>
+
+  <field>
+    <name>sponsor</name>
+    <type>varchar</type>
+    <length>20</length>
+    <required>true</required>
+    <comment>Need a 'parent'</comment>
+    <add>4.4</add>
+  </field>
+  
+  <foreignKey>
+    <name>sponsor</name>
+    <table>tournament_sponsor</table>
+    <key>id</key>
+    <add>4.4</add>
+    <onDelete>CASCADE</onDelete>
+    <onUpdate>CASCADE</onUpdate>
+  </foreignKey>
+
+</table>

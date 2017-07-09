@@ -1,16 +1,16 @@
 <?php
 
-class CRM_Tournament_BAO_Team extends CRM_Tournament_DAO_Team {
+class CRM_Tournament_BAO_AgeGroup extends CRM_Tournament_DAO_AgeGroup {
 
   /**
-   * Create a new Team based on array-data
+   * Create a new AgeGroup based on array-data
    *
    * @param array $params key-value pairs
-   * @return CRM_Tournament_DAO_Team|NULL
-   */
+   * @return CRM_Tournament_DAO_AgeGroup|NULL
+   **/
   public static function create($params) {
-    $className = 'CRM_Tournament_DAO_Team';
-    $entityName = 'Team';
+    $className = 'CRM_Tournament_DAO_AgeGroup';
+    $entityName = 'AgeGroup';
     $hook = empty($params['id']) ? 'create' : 'edit';
 
     CRM_Utils_Hook::pre($hook, $entityName, CRM_Utils_Array::value('id', $params), $params);
