@@ -116,6 +116,39 @@ class CRM_Tournament_DAO_TournamentSponsor extends CRM_Core_DAO {
     return Civi::$statics[__CLASS__]['fields'];
   }
   /**
+   * Save DAO object.
+   *
+   * @param bool $hook
+   *
+   * @return CRM_Core_DAO
+   */
+  public function save($hook = TRUE) {
+  	if (!empty($this->id)) {
+  		$this->update();
+  
+  		if ($hook) {
+  			$event = new \Civi\Core\DAO\Event\PostUpdate($this);
+  			//\Civi::service('dispatcher')->dispatch("civi.dao.postUpdate", $event);
+  		}
+  	}
+  	else {
+  		$this->insert();
+  
+  		if ($hook) {
+  			$event = new \Civi\Core\DAO\Event\PostUpdate($this);
+  			//	\Civi::service('dispatcher')->dispatch("civi.dao.postInsert", $event);
+  		}
+  	}
+  	$this->free();
+  
+  	if ($hook) {
+  		CRM_Utils_Hook::postSave($this);
+  	}
+  
+  	return $this;
+  }
+  
+  /**
    * Return a mapping from field-name to the corresponding key (as used in fields()).
    *
    * @return array

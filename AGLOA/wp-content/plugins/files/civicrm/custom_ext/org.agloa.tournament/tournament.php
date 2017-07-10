@@ -606,4 +606,9 @@ function tournament_civicrm_entityTypes(&$entityTypes) {
 	= function ($class, &$fields) {
 		unset($fields['created_date']['export']);
 	};
+	$entityTypes[] = array(
+			'name'  => 'TournamentSponsor',
+			'class' => 'CRM_Tournament_DAO_TournamentSponsor',
+			'table' => 'tournament_sponsor',
+	);
 }

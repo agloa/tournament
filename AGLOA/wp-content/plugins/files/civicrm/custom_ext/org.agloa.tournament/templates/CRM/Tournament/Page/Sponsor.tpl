@@ -21,12 +21,10 @@
           </thead>
           <tbody>
         {foreach from=$rows item=row}
-          <tr >
-          <tr id="option_value-{$row.id}" class="crm-admin-options crm-admin-options_{$row.id} crm-entity {cycle values="odd-row,even-row"}">
-            <td class="crm-admin-options-id crm-editable" data-field="id">{$row.id}</td>
-            <td class="crm-admin-options-label crm-editable" data-field="label">{$row.label}</td>           
-            <td class="crm-admin-options-description crm-editable" data-field="description" data-type="textarea">{$row.description}</td>
-          </tr>
+          <tr id="tournament_sponsor-{$row.id}" class="crm-entity {cycle values="odd-row,even-row"}">
+            <td class="crm-editable" data-field="id">{$row.id}</td>
+            <td class="crm-editable" data-field="label">{$row.label}</td>           
+            <td class="crm-editable" data-field="description" data-type="textarea">{$row.description}</td>
           </tr>
         {/foreach}
         </tbody>

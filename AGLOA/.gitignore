@@ -26,3 +26,6 @@ wp-config.php
 /wp-signup.php
 /wp-trackback.php
 /xmlrpc.php
+.buildpath
+.project
+.settings
