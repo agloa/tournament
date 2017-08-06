@@ -611,4 +611,9 @@ function tournament_civicrm_entityTypes(&$entityTypes) {
 			'class' => 'CRM_Tournament_DAO_TournamentSponsor',
 			'table' => 'tournament_sponsor',
 	);
+	$entityTypes[] = array(
+			'name'  => 'Tournament',
+			'class' => 'CRM_Tournament_DAO_Tournament',
+			'table' => 'tournament',
+	);
 }

@@ -78,8 +78,8 @@ class CRM_Tournament_DAO_Tournament extends CRM_Core_DAO {
    * @return tournament
    */
   function __construct() {
-    $this->__table = 'tournamentr';
-    parent::__construct();
+  	$this->__table = 'tournament';
+  	parent::__construct();
   }
   /**
    * Returns foreign keys and entity references
@@ -88,11 +88,12 @@ class CRM_Tournament_DAO_Tournament extends CRM_Core_DAO {
    *   [CRM_Core_Reference_Interface]
    */
   static function getReferenceColumns() {
-    if (!isset(Civi::$statics[__CLASS__]['links'])) {
-      Civi::$statics[__CLASS__]['links'] = static ::createReferenceColumns(__CLASS__);
-      CRM_Core_DAO_AllCoreTables::invoke(__CLASS__, 'links_callback', Civi::$statics[__CLASS__]['links']);
-    }
-    return Civi::$statics[__CLASS__]['links'];
+  	if (!isset(Civi::$statics[__CLASS__]['links'])) {
+  		Civi::$statics[__CLASS__]['links'] = static ::createReferenceColumns(__CLASS__);
+  		Civi::$statics[__CLASS__]['links'][] = new CRM_Core_Reference_Basic(self::getTableName() , 'sponsor', 'tournament_sponsor', 'id');
+  		CRM_Core_DAO_AllCoreTables::invoke(__CLASS__, 'links_callback', Civi::$statics[__CLASS__]['links']);
+  	}
+  	return Civi::$statics[__CLASS__]['links'];
   }
   /**
    * Returns all the column names of this table
@@ -110,7 +111,7 @@ class CRM_Tournament_DAO_Tournament extends CRM_Core_DAO {
           'maxlength' => 20,
           'required' => true,
         ) ,
-        'label' => array(
+        'title' => array(
           'name' => 'label',
           'type' => CRM_Utils_Type::T_STRING,
           'title' => ts('Title') ,
@@ -119,8 +120,8 @@ class CRM_Tournament_DAO_Tournament extends CRM_Core_DAO {
           'size' => CRM_Utils_Type::HUGE,
           'required' => true,
           'import' => true,
-          'where' => 'tournament.label',
-          'headerPattern' => '/(event.)?label$/i',
+          'where' => 'tournament.title',
+          'headerPattern' => '/(event.)?title$/i',
           'dataPattern' => '',
           'export' => true,
           'html' => array(
@@ -133,7 +134,8 @@ class CRM_Tournament_DAO_Tournament extends CRM_Core_DAO {
           'title' => ts('Description') ,
           'description' => 'Optional verbose description',
           'rows' => 5,
-          'cols' => 80,
+          'cols' => 800,
+          'required' => false,
           'html' => array(
             'type' => 'TextArea',
           ) ,
@@ -144,7 +146,7 @@ class CRM_Tournament_DAO_Tournament extends CRM_Core_DAO {
           'title' => ts('Sponsor') ,
           'description' => 'Sponsor',
           'maxlength' => 20,
-          'required' => true,
+          //'required' => true,
           'import' => true,
           'where' => 'tournament.sponsor',
           'headerPattern' => '/(event.)?sponsor$/i',
@@ -172,12 +174,12 @@ class CRM_Tournament_DAO_Tournament extends CRM_Core_DAO {
     return Civi::$statics[__CLASS__]['fieldKeys'];
   }
   /**
-   * Returns the names of this table
+   * Returns the name of this table
    *
    * @return string
    */
   static function getTableName() {
-    return CRM_Core_DAO::getLocaleTableName(self::$_tableName);
+  	return CRM_Core_DAO::getLocaleTableName('tournament');
   }
   /**
    * Returns if this table needs to be logged
@@ -185,7 +187,7 @@ class CRM_Tournament_DAO_Tournament extends CRM_Core_DAO {
    * @return boolean
    */
   function getLog() {
-    return self::$_log;
+  	return self::$_log;
   }
   /**
    * Returns the list of fields that can be imported

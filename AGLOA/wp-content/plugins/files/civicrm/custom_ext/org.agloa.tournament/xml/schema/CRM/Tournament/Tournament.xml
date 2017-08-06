@@ -47,7 +47,7 @@
     <type>varchar</type>
     <length>20</length>
     <required>true</required>
-    <comment>Need a 'parent'</comment>
+    <comment>Need a root element</comment>
     <add>4.4</add>
   </field>
   

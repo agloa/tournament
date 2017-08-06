@@ -22,7 +22,7 @@
           <tbody>
         {foreach from=$rows item=row}
           <tr id="tournament_sponsor-{$row.id}" class="crm-entity {cycle values="odd-row,even-row"}">
-            <td class="crm-editable" data-field="id">{$row.id}</td>
+            <td data-field="id">{$row.id}</td>
             <td class="crm-editable" data-field="label">{$row.label}</td>           
             <td class="crm-editable" data-field="description" data-type="textarea">{$row.description}</td>
           </tr>

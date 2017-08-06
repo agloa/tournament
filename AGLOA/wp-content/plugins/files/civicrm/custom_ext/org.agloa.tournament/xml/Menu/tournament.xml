@@ -2,6 +2,18 @@
 <!DOCTYPE menu>
 <menu>
   <item>
+    <path>civicrm/tournament</path>
+    <page_callback>CRM_Tournament_Page_Tournament</page_callback>
+    <title>Tournament</title>
+    <access_arguments>administer CiviCRM</access_arguments>
+  </item>  
+  <item>
+    <path>civicrm/tournament/admin</path>
+    <page_callback>CRM_Tournament_Form_Tournament</page_callback>
+    <title>Tournament</title>
+    <access_arguments>administer CiviCRM</access_arguments>
+  </item>
+  <item>
     <path>civicrm/tournament/register</path>
     <page_callback>CRM_Tournament_Controller_Registration</page_callback>
     <title>Tournament Registration</title>
@@ -107,18 +119,6 @@
     <access_arguments>access CiviEvent</access_arguments>
   </item>
   <item>
-    <path>civicrm/tournament</path>
-    <page_callback>CRM_Tournament_Page_Tournaments</page_callback>
-    <title>Tournaments</title>
-    <access_arguments>administer CiviCRM</access_arguments>
-  </item>
-  <item>
-    <path>civicrm/tournaments</path>
-    <page_callback>CRM_Tournament_Page_Tournaments</page_callback>
-    <title>Tournaments</title>
-    <access_arguments>administer CiviCRM</access_arguments>
-  </item>
-  <item>
     <path>civicrm/tournament/players/edit</path>
     <page_callback>CRM_Tournament_Form_Players</page_callback>
     <title>Players</title>
@@ -129,11 +129,5 @@
     <page_callback>CRM_Tournament_Page_Sponsor</page_callback>
     <title>Sponsor</title>
     <access_arguments>administer CiviCRM</access_arguments>
-  </item>
-  <item>
-    <path>civicrm/tournament/basePage</path>
-    <page_callback>CRM_Tournament_Page_BasePage</page_callback>
-    <title>BasePage</title>
-    <access_arguments>access CiviCRM</access_arguments>
   </item>
 </menu>
