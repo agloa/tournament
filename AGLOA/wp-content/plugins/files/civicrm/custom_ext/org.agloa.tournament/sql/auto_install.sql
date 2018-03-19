@@ -51,31 +51,122 @@ CREATE TABLE `person` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='modeled on civicrm_contact for players, coaches, etc.'
 ;
 
-DROP FUNCTION IF EXISTS `sort_name`;
-delimiter //
-CREATE FUNCTION `sort_name`(`p_id` INT(10)) RETURNS varchar(256) CHARSET utf8
-   NO SQL
-   DETERMINISTIC
-BEGIN
-DECLARE lv_sort_name varchar(256) CHARACTER SET utf8;
-SELECT CONCAT_WS(', ', last_name,first_name) into lv_sort_name from person where person.id=p_id;
-RETURN lv_sort_name;
-END
+DROP FUNCTION IF EXISTS `age`;
+CREATE FUNCTION `age` (
+`p_birth_date` DATE
+) RETURNS INT DETERMINISTIC NO SQL 
+RETURN IF( p_birth_date >0, YEAR( CURDATE( ) ) - YEAR( p_birth_date ) , 0 ) ;
+;
+
+DROP FUNCTION IF EXISTS sort_name;
+CREATE FUNCTION sort_name(`p_last_name` VARCHAR( 64 ) CHARSET utf8,`p_first_name` VARCHAR( 64 ) ) 
+RETURNS VARCHAR( 220 ) CHARSET utf8 DETERMINISTIC NO SQL SQL SECURITY DEFINER 
+RETURN CONCAT_WS(', ',p_last_name,p_first_name);
+;
+
+DROP FUNCTION IF EXISTS `display_name`;
+CREATE FUNCTION `display_name` (
+`p_last_name` VARCHAR( 64 ) CHARSET utf8,
+`p_first_name` VARCHAR( 64 ) CHARSET utf8,
+`p_middle_name` VARCHAR( 64 ) CHARSET utf8,
+`p_prefix` VARCHAR( 10 ) CHARSET utf8,
+`p_suffix` VARCHAR( 10 ) CHARSET utf8
+) RETURNS VARCHAR( 220 ) CHARSET utf8 DETERMINISTIC NO SQL SQL SECURITY DEFINER 
+RETURN REPLACE(TRIM(CONCAT_WS(' ',IFNULL(p_prefix,''),p_first_name,p_middle_name,p_last_name,IFNULL(p_suffix,''))),'  ',' ') ;
+;
+
+CREATE OR REPLACE VIEW `person_summary` AS
+SELECT `id` , sort_name(
+last_name, first_name
+) AS sort_name, display_name(
+last_name, first_name, middle_name, prefix, suffix
+) AS display_name, age(
+birth_date
+) AS age
+FROM `person` 
+;
+
+DROP TABLE IF EXISTS `tournament_person`;
+CREATE TABLE `tournament_person` (
+ `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
+ `person` int(10) unsigned NOT NULL COMMENT 'FK to Person ID',
+ `status` varchar(10) COLLATE utf8_unicode_ci DEFAULT 'registered' COMMENT 'Participant status',
+ `primary_role` varchar(128) COLLATE utf8_unicode_ci DEFAULT 'player' COMMENT 'role(s), e.g., player, coach, volunteer ID. Implicit FK to civicrm_option_value where option_group = participant_role.',
+ `registered_by` int(10) unsigned DEFAULT NULL,
+ `register_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'When did contact register for event?',
+ PRIMARY KEY (`tournament`,`person`),
+ KEY `index_status_id` (`status`),
+ KEY `index_role_id` (`primary_role`),
+ KEY `FK_civicrm_participant_contact_id` (`person`),
+ KEY `FK_civicrm_participant_event_id` (`tournament`),
+ KEY `registered_by` (`registered_by`),
+ KEY `status` (`status`),
+ KEY `primary_role` (`primary_role`),
+ CONSTRAINT `tournament_person_ibfk_1` FOREIGN KEY (`tournament`) REFERENCES `tournament` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `tournament_person_ibfk_2` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `tournament_person_ibfk_3` FOREIGN KEY (`registered_by`) REFERENCES `person` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='register a person for a tournament'
+;
+
+CREATE OR REPLACE VIEW `registered_tournament_players` AS
+SELECT tp.`tournament` , tp.`person` , p.sort_name, p.age
+FROM `tournament_person` tp JOIN person_summary p ON p.id = tp.person
+WHERE `status` = 'registered' AND `primary_role` = 'player'
+;
+
+CREATE OR REPLACE VIEW `eligible_tournament_age_group_players` AS
+SELECT person, sort_name, a.id AS tournament_age_group
+FROM `registered_tournament_players` p
+JOIN tournament_age_group a ON a.tournament = p.tournament
+AND p.age <= 1+a.age_group
+;
+
+CREATE OR REPLACE VIEW `eligible_competition_players` AS 
+select `a`.`person` AS `person`,`a`.`sort_name` AS `sort_name`,`c`.`id` AS competition 
+from (`eligible_tournament_age_group_players` `a` join `competition` `c` 
+on((`c`.`tournament_age_group` = `a`.`tournament_age_group`)))
+;
+
+-- create a trigger that rejects inserts to competition_person that aren't in eligible_competition_players
+DROP TRIGGER IF EXISTS `competition_person_before_insert`;
+
+DELIMITER //
+CREATE TRIGGER `competition_person_before_insert` BEFORE INSERT ON `competition_person`
+FOR EACH
+ROW BEGIN IF(
+SELECT COUNT( e.person )
+FROM eligible_competition_players e
+WHERE e.person = NEW.person
+AND e.competition = NEW.competition ) =0
+THEN BEGIN
+
+  select CONCAT('Cannot add row to competition_person. Person: ', NEW.person, ' is not eligible for competition: ', NEW.competition) into @messageText;
+
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = @messageText;
+END;
+END IF ;
+
+END ;
 //
 delimiter ;
 
-DROP FUNCTION IF EXISTS `display_name`;
-delimiter //
-CREATE FUNCTION `display_name`(`p_id` INT(10)) RETURNS varchar(256) CHARSET utf8
-   NO SQL
-   DETERMINISTIC
-BEGIN
-DECLARE lv_display_name varchar(256) CHARACTER SET utf8;
-SELECT REPLACE(TRIM(CONCAT_WS(' ',IFNULL(prefix,''),first_name,middle_name,last_name,IFNULL(suffix,''))),'  ',' ') into lv_display_name from person where person.id=p_id;
-RETURN lv_display_name;
-END
+-- create a trigger that rejects updates to competition_person that aren't in eligible_competition_players
+DROP TRIGGER IF EXISTS `competition_person_before_update`;
+
+DELIMITER //
+CREATE TRIGGER `competition_person_before_update` BEFORE UPDATE ON `competition_person`
+FOR EACH ROW BEGIN 
+  IF(SELECT COUNT( e.person ) FROM eligible_competition_players e WHERE e.person = NEW.person AND e.competition = NEW.competition ) = 0
+  THEN BEGIN
+    select CONCAT('Cannot update competition_person row. Person: ', NEW.person, ' is not eligible for competition: ', NEW.competition) into @messageText;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @messageText;
+    END;
+  END IF ;
+END ;
 //
 delimiter ;
+
 
 DROP TABLE IF EXISTS `competition_style`;
 CREATE TABLE `competition_style` (
@@ -195,7 +286,6 @@ CREATE TABLE `registration_group_person` (
 ;
 
 DROP TABLE IF EXISTS `team`;
--- should team ID autonumber?
 CREATE TABLE `team` (
  `id` int(10) unsigned NOT NULL COMMENT 'Team ID',
  `name` varchar(64) COLLATE utf8_unicode_ci NOT NULL COMMENT 'Internal name of record.',
@@ -212,6 +302,26 @@ CREATE TABLE `team` (
  CONSTRAINT `team_ibfk_1` FOREIGN KEY (`created_id`) REFERENCES `person` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
  CONSTRAINT `team_ibfk_2` FOREIGN KEY (`modified_id`) REFERENCES `person` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
+;
+
+CREATE OR REPLACE VIEW `teams_created_by` AS
+SELECT team.`id` , `title` , `created_id` , sort_name
+FROM `team`
+JOIN person_summary p ON p.id = created_id
+ORDER BY `team`.`created_id` ASC
+;
+
+DROP TABLE IF EXISTS `scheduling_group_team`;
+CREATE TABLE `scheduling_group_team` (
+ `scheduling_group` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'FK to scheduling_group',
+ `team` int(10) unsigned NOT NULL COMMENT 'FK to team',
+ `status` varchar(8) COLLATE utf8_unicode_ci DEFAULT '''Added''' COMMENT 'status of person relative to membership in group',
+ PRIMARY KEY (`scheduling_group`,`team`),
+ KEY `status` (`status`),
+ KEY `team` (`team`),
+ CONSTRAINT `scheduling_group_team_ibfk_1` FOREIGN KEY (`scheduling_group`) REFERENCES `scheduling_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `scheduling_group_team_ibfk_2` FOREIGN KEY (`team`) REFERENCES `team` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='tournament participants are grouped for registration and sch'
 ;
 
 DROP TABLE IF EXISTS  `tournament` ;
