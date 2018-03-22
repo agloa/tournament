@@ -131,6 +131,72 @@ JOIN tournament_age_group a ON a.tournament = p.tournament
 AND p.age <= 1+a.age_group
 ;
 
+CREATE OR REPLACE VIEW  `eligible_competition_players` AS 
+select `a`.`person` AS `person`,`a`.`sort_name` AS `sort_name`,`c`.`id` AS `competition` 
+from (`eligible_tournament_age_group_players` `a` join `competition` `c` on((`c`.`tournament_age_group` = `a`.`tournament_age_group`)))
+;
+
+-- create a trigger that rejects inserts to competition_person that 
+-- 1) aren't in eligible_competition_players or 
+-- 2) are already registered for that tournament and competition type
+
+DROP TRIGGER IF EXISTS `competition_person_before_insert`;
+
+DELIMITER //
+CREATE TRIGGER `competition_person_before_insert` BEFORE INSERT ON `competition_person`
+FOR EACH ROW BEGIN 
+  IF(SELECT COUNT( e.person ) FROM eligible_competition_players e WHERE e.person = NEW.person AND e.competition = NEW.competition ) = 0
+    THEN BEGIN
+      select CONCAT('Cannot add row to competition_person. Person: ', NEW.person, ' is not eligible for competition: ', NEW.competition) into @messageText;
+      SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = @messageText;
+    END;
+  ELSEIF(SELECT count(c.id) FROM tournament_competition_type_person tctp JOIN competition c ON c.type = tctp.type WHERE person = NEW.person AND c.id = NEW.competition) > 0 
+    THEN BEGIN
+      select CONCAT('Cannot add row to competition_person. Person: ', NEW.person, ' is already registered for a competition like: ', NEW.competition) into @messageText;
+      SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = @messageText;
+    END;
+  END IF;
+
+END;
+//
+delimiter ;
+
+-- create a trigger that rejects updates to competition_person that 
+-- 1) aren't in eligible_competition_players or 
+-- 2) are already registered for that tournament and competition type
+DROP TRIGGER IF EXISTS `competition_person_before_update`;
+
+DELIMITER //
+CREATE TRIGGER `competition_person_before_update` BEFORE UPDATE ON `competition_person`
+FOR EACH ROW BEGIN 
+  IF(SELECT COUNT( e.person ) FROM eligible_competition_players e WHERE e.person = NEW.person AND e.competition = NEW.competition ) = 0
+    THEN BEGIN
+      select CONCAT('Cannot update competition_person row. Person: ', NEW.person, ' is not eligible for competition: ', NEW.competition) into @messageText;
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @messageText;
+    END;
+    -- Special exception: new.person = old.person and new.type = old.type is OK
+  ELSE 
+    BEGIN
+      SELECT type FROM competition WHERE id = old.competition into @oldType;
+      SELECT type FROM competition WHERE id = new.competition into @newType;
+      IF (new.person != old.person || @oldType != @newType) 
+        THEN BEGIN
+          IF(SELECT count(c.id) FROM tournament_competition_type_person tctp JOIN competition c ON c.type = tctp.type WHERE person = NEW.person AND c.id = NEW.competition) > 0 
+            THEN BEGIN
+              select CONCAT('Cannot update competition_person. Person: ', NEW.person, ' is already registered for a competition like: ', NEW.competition) into @messageText;
+              SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @messageText;
+            END;
+          END IF;
+        END;      
+      END IF ;     
+    END;         
+  END IF ;
+END ;
+//
+delimiter ;
+
 DROP TABLE IF EXISTS `competition_style`;
 CREATE TABLE `competition_style` (
  `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
@@ -347,7 +413,7 @@ CREATE TABLE `competition_person` (
 
 -- Enforce unique competition per type, per person, per tournament
 CREATE OR REPLACE VIEW `tournament_competition_type_person` AS
-SELECT t.tournament, cp.competition, c.type,  `person`
+SELECT t.tournament, c.type,  `person`
 FROM `competition_person` cp
 JOIN competition c ON cp.competition = c.id
 JOIN tournament_age_group t ON t.id = c.tournament_age_group
