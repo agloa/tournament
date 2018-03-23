@@ -1,8 +1,9 @@
 -- TODO unit test this script
 -- TODO how to add prefix, e.g., agloa_ ?
 -- TODO how to specify database name(s)
-CREATE DATABASE IF NOT EXISTS `tournament` /*!40100 DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci */;
-USE tournament;
+-- DROP DATABASE IF EXISTS `tournament_test`;
+CREATE DATABASE IF NOT EXISTS `tournament_test` /*!40100 DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci */;
+USE tournament_test;
 
 DROP TABLE IF EXISTS `tournament_sponsor`;
 CREATE TABLE `tournament_sponsor` (
@@ -33,6 +34,7 @@ CREATE TABLE `age_group` (
  PRIMARY KEY (`id`),
  UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT COMMENT='modeled on civicrm_option_value'
+;
 
 DROP TABLE IF EXISTS `person`;
 CREATE TABLE `person` (
@@ -58,10 +60,10 @@ CREATE TABLE `person_contact_xref` (
  `contact` int(10) unsigned NOT NULL,
  PRIMARY KEY (`person`),
  KEY `contact` (`contact`),
- CONSTRAINT `person_contact_xref_ibfk_1` FOREIGN KEY (`contact`) REFERENCES `civicrm_contact` (`id`) ON UPDATE CASCADE,
  CONSTRAINT `person_contact_xref_ibfk_2` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Link person to CiviCRM individual'
 ;
+
 
 DROP FUNCTION IF EXISTS `age`;
 CREATE FUNCTION `age` (
@@ -118,6 +120,28 @@ CREATE TABLE `tournament_event_xref` (
  KEY `event` (`event`),
  CONSTRAINT `tournament` FOREIGN KEY (`tournament`) REFERENCES `tournament` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
+;
+
+DROP TABLE IF EXISTS  `tournament_person` ;
+CREATE TABLE `tournament_person` (
+ `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
+ `person` int(10) unsigned NOT NULL COMMENT 'FK to Person ID',
+ `status` varchar(10) COLLATE utf8_unicode_ci DEFAULT 'registered' COMMENT 'Participant status',
+ `primary_role` varchar(128) COLLATE utf8_unicode_ci DEFAULT 'player' COMMENT 'role(s), e.g., player, coach, volunteer ID. Implicit FK to civicrm_option_value where option_group = participant_role.',
+ `registered_by` int(10) unsigned DEFAULT NULL,
+ `register_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'When did contact register for event?',
+ PRIMARY KEY (`tournament`,`person`),
+ KEY `index_status_id` (`status`),
+ KEY `index_role_id` (`primary_role`),
+ KEY `FK_civicrm_participant_contact_id` (`person`),
+ KEY `FK_civicrm_participant_event_id` (`tournament`),
+ KEY `registered_by` (`registered_by`),
+ KEY `status` (`status`),
+ KEY `primary_role` (`primary_role`),
+ CONSTRAINT `tournament_person_ibfk_1` FOREIGN KEY (`tournament`) REFERENCES `tournament` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `tournament_person_ibfk_2` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `tournament_person_ibfk_3` FOREIGN KEY (`registered_by`) REFERENCES `person` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='register a person for a tournament'
 ;
 
 DROP TABLE IF EXISTS  `tournament_age_group` ;
@@ -216,7 +240,6 @@ JOIN competition c ON cp.competition = c.id
 JOIN tournament_age_group t ON t.id = c.tournament_age_group
 WHERE `status` LIKE 'registered'
 ;
-
 
 CREATE OR REPLACE VIEW `registered_tournament_players` AS
 SELECT tp.`tournament` , tp.`person` , p.sort_name, p.age
@@ -351,12 +374,6 @@ CREATE TABLE `registration_group_xref` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
 ;
 
-CREATE OR REPLACE VIEW `registration_group_people` AS 
-select `rgp`.`registration_group` AS `group_id`,`rg`.`label` AS `group_name`,`rgp`.`person` AS `person_id`,`p`.`last_name` AS `last_name`,`p`.`first_name` AS `first_name`,`rgp`.`status` AS `status` 
-from ((`registration_group_person` `rgp` join `registration_group` `rg` on((`rg`.`id` = `rgp`.`registration_group`))) join `person` `p` on((`p`.`id` = `rgp`.`person`))) 
-order by `rg`.`label`
-;
-
 DROP TABLE IF EXISTS `registration_group_person` ;
 CREATE TABLE `registration_group_person` (
  `registration_group` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'FK to egistration_group',
@@ -367,6 +384,12 @@ CREATE TABLE `registration_group_person` (
  CONSTRAINT `registration_group_person_ibfk_1` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
  CONSTRAINT `registration_group_person_ibfk_2` FOREIGN KEY (`registration_group`) REFERENCES `registration_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='tournament participants are grouped for registration and sch'
+;
+
+CREATE OR REPLACE VIEW `registration_group_people` AS 
+select `rgp`.`registration_group` AS `group_id`,`rg`.`label` AS `group_name`,`rgp`.`person` AS `person_id`,`p`.`last_name` AS `last_name`,`p`.`first_name` AS `first_name`,`rgp`.`status` AS `status` 
+from ((`registration_group_person` `rgp` join `registration_group` `rg` on((`rg`.`id` = `rgp`.`registration_group`))) join `person` `p` on((`p`.`id` = `rgp`.`person`))) 
+order by `rg`.`label`
 ;
 
 DROP TABLE IF EXISTS `team`;
@@ -421,10 +444,12 @@ CREATE TABLE `team_person` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
 ;
 
-// Based on the competions its players are registered for, what competitions can this team register for?
-//   Which compeitions are all this teams players registered for?
-//   create a unique set of each person's competitions
-//   find the intersection of those person's competitions
+/* 
+   Based on the competions its players are registered for, what competitions can this team register for?
+     Which compeitions are all this teams players registered for?
+     create a unique set of each person's competitions
+     find the intersection of those person's competitions
+*/
 
 CREATE TABLE `competition_team` (
  `competition` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
@@ -436,6 +461,8 @@ CREATE TABLE `competition_team` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='pure join table'
 ;
 
+
+/*
 CREATE OR REPLACE
  VIEW `gender_option_group`
  AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'gender' ;
@@ -823,3 +850,5 @@ IF (new.group_type) LIKE CONCAT( CONCAT( '%', (SELECT value FROM sceduling_group
  INSERT IGNORE INTO scheduling_group(id, label, description, sponsor_org, region)
  VALUES (LEFT(new.title,20), new.title, new.description, (SELECT id FROM `tournament_sponsor` LIMIT 1), 'Combo');
 END IF
+
+*/
