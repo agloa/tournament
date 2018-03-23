@@ -1,3 +1,4 @@
+-- TODO unit test this script
 -- TODO how to add prefix, e.g., agloa_ ?
 -- TODO how to specify database name(s)
 CREATE DATABASE IF NOT EXISTS `tournament` /*!40100 DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci */;
@@ -97,7 +98,96 @@ birth_date
 FROM `person` 
 ;
 
-DROP TABLE IF EXISTS `tournament_person`;
+DROP TABLE IF EXISTS  `tournament` ;
+CREATE TABLE `tournament` (
+ `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
+ `title` varchar(255) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
+ `description` text COLLATE utf8_unicode_ci NOT NULL,
+ `sponsor` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'Sponsor FK',
+ PRIMARY KEY (`id`),
+ KEY `tournament_sponsor_fk` (`sponsor`),
+ CONSTRAINT `tournament_sponsor_fk` FOREIGN KEY (`sponsor`) REFERENCES `tournament_sponsor` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT COMMENT='Tournament is modeled on civicrm_event'
+;
+
+DROP TABLE IF EXISTS `tournament_event_xref`;
+CREATE TABLE `tournament_event_xref` (
+ `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'tournament FK',
+ `event` int(10) unsigned NOT NULL COMMENT 'civicrm_event FK',
+ PRIMARY KEY (`tournament`),
+ KEY `event` (`event`),
+ CONSTRAINT `tournament` FOREIGN KEY (`tournament`) REFERENCES `tournament` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
+;
+
+DROP TABLE IF EXISTS  `tournament_age_group` ;
+CREATE TABLE `tournament_age_group` (
+ `id` varchar(20) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
+ `title` varchar(512) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
+ `description` text CHARACTER SET utf8 COLLATE utf8_unicode_ci,
+ `tournament` varchar(20) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'tournament FK',
+ `age_group` int(10) unsigned NOT NULL COMMENT 'age_group FK',
+ PRIMARY KEY (`id`),
+ UNIQUE KEY `tournament` (`tournament`,`age_group`),
+ KEY `age_group_fk` (`age_group`),
+ CONSTRAINT `age_group_fk` FOREIGN KEY (`age_group`) REFERENCES `age_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `tournament_fk` FOREIGN KEY (`tournament`) REFERENCES `tournament` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT COMMENT='modeled on civicrm_option_value'
+;
+
+DROP TABLE IF EXISTS `competition_style`;
+CREATE TABLE `competition_style` (
+ `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
+ `label` varchar(512) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
+ `name` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
+ PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='modeled on civicrm_option_value'
+;
+
+DROP TABLE IF EXISTS `competition_category`;
+CREATE TABLE `competition_category` (
+ `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
+ `label` varchar(512) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
+ `name` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
+ PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='modeled on civicrm_option_value'
+;
+
+DROP TABLE IF EXISTS `competition_type`;
+CREATE TABLE `competition_type` (
+ `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
+ `label` varchar(512) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
+ `name` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
+ `category` varchar(20) COLLATE utf8_unicode_ci DEFAULT NULL,
+ `style` varchar(20) COLLATE utf8_unicode_ci DEFAULT NULL COMMENT 'e.g., match or medalist',
+ `match_size` int(10) unsigned NOT NULL COMMENT 'How many players comprise a match?',
+ `min_score` decimal(10,0) DEFAULT NULL,
+ `max_score` decimal(10,0) DEFAULT NULL,
+ PRIMARY KEY (`id`),
+ KEY `category` (`category`),
+ KEY `style` (`style`),
+ CONSTRAINT `competition_type_ibfk_1` FOREIGN KEY (`category`) REFERENCES `competition_category` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `competition_type_ibfk_2` FOREIGN KEY (`style`) REFERENCES `competition_style` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
+;
+
+DROP TABLE IF EXISTS `competition`;
+CREATE TABLE `competition` (
+ `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
+ `type` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
+ `title` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
+ `description` text COLLATE utf8_unicode_ci,
+ `nRounds` int(10) unsigned NOT NULL,
+ `tournament_age_group` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'FK',
+ PRIMARY KEY (`id`),
+ UNIQUE KEY `tournament_age_group` (`tournament_age_group`,`type`),
+ KEY `competition_type` (`type`),
+ CONSTRAINT `competition_ibfk_1` FOREIGN KEY (`tournament_age_group`) REFERENCES `tournament_age_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `competition_type` FOREIGN KEY (`type`) REFERENCES `competition_type` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='which competitions does a tournament comprise'
+;
+
+DROP TABLE IF EXISTS  `competition_person` ;
 CREATE TABLE `competition_person` (
  `competition` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
  `person` int(10) unsigned NOT NULL COMMENT 'FK to person',
@@ -112,11 +202,21 @@ CREATE TABLE `competition_person` (
  KEY `FK_civicrm_participant_contact_id` (`person`),
  KEY `FK_civicrm_participant_event_id` (`competition`),
  KEY `FK_civicrm_participant_registered_by_id` (`registered_by_id`),
- CONSTRAINT `competition_person_ibfk_1` FOREIGN KEY (`person`) REFERENCES `tournament_person` (`person`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `competition_person_ibfk_1` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
  CONSTRAINT `competition_person_ibfk_2` FOREIGN KEY (`competition`) REFERENCES `competition` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
  CONSTRAINT `competition_person_ibfk_3` FOREIGN KEY (`registered_by_id`) REFERENCES `person` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='tournament registration kernel'
 ;
+
+-- Enforce unique competition per type, per person, per tournament
+CREATE OR REPLACE VIEW `tournament_competition_type_person` AS
+SELECT t.tournament, c.type,  `person`
+FROM `competition_person` cp
+JOIN competition c ON cp.competition = c.id
+JOIN tournament_age_group t ON t.id = c.tournament_age_group
+WHERE `status` LIKE 'registered'
+;
+
 
 CREATE OR REPLACE VIEW `registered_tournament_players` AS
 SELECT tp.`tournament` , tp.`person` , p.sort_name, p.age
@@ -197,40 +297,11 @@ END ;
 //
 delimiter ;
 
-DROP TABLE IF EXISTS `competition_style`;
-CREATE TABLE `competition_style` (
- `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
- `label` varchar(512) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
- `name` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
- PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='modeled on civicrm_option_value'
-;
-
-DROP TABLE IF EXISTS `competition_category`;
-CREATE TABLE `competition_category` (
- `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
- `label` varchar(512) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
- `name` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
- PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='modeled on civicrm_option_value'
-;
-
-DROP TABLE IF EXISTS `competition_type`;
-CREATE TABLE `competition_type` (
- `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
- `label` varchar(512) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
- `name` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
- `category` varchar(20) COLLATE utf8_unicode_ci DEFAULT NULL,
- `style` varchar(20) COLLATE utf8_unicode_ci DEFAULT NULL COMMENT 'e.g., match or medalist',
- `match_size` int(10) unsigned NOT NULL COMMENT 'How many players comprise a match?',
- `min_score` decimal(10,0) DEFAULT NULL,
- `max_score` decimal(10,0) DEFAULT NULL,
- PRIMARY KEY (`id`),
- KEY `category` (`category`),
- KEY `style` (`style`),
- CONSTRAINT `competition_type_ibfk_1` FOREIGN KEY (`category`) REFERENCES `competition_category` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
- CONSTRAINT `competition_type_ibfk_2` FOREIGN KEY (`style`) REFERENCES `competition_style` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
+CREATE OR REPLACE VIEW `tournament_player_competition_set` AS
+SELECT tournament, t.person, group_concat( c.`competition` ) AS competition_set
+FROM tournament_person t JOIN `competition_person` c ON c.person = t.person
+WHERE c.status = 'registered' AND `role` = 'player'
+GROUP BY tournament, person
 ;
 
 DROP TABLE IF EXISTS `scheduling_group`;
@@ -304,7 +375,7 @@ CREATE TABLE `team` (
  `name` varchar(64) COLLATE utf8_unicode_ci NOT NULL COMMENT 'Internal name of record.',
  `title` varchar(64) COLLATE utf8_unicode_ci NOT NULL COMMENT 'Name of record.',
  `description` text COLLATE utf8_unicode_ci COMMENT 'Optional verbose description of the record.',
- `is_active` tinyint(4) DEFAULT NULL COMMENT 'Is this entry active?',
+ `is_active` tinyint(4) NOT NULL DEFAULT '1' COMMENT 'Is this entry active?',
  `created_id` int(10) unsigned DEFAULT NULL COMMENT 'Who created record?',
  `modified_id` int(10) unsigned DEFAULT NULL COMMENT 'Who modified record?',
  PRIMARY KEY (`id`),
@@ -337,99 +408,6 @@ CREATE TABLE `scheduling_group_team` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='tournament participants are grouped for registration and sch'
 ;
 
-DROP TABLE IF EXISTS  `tournament` ;
-CREATE TABLE `tournament` (
- `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
- `title` varchar(255) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
- `description` text COLLATE utf8_unicode_ci NOT NULL,
- `sponsor` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'Sponsor FK',
- PRIMARY KEY (`id`),
- KEY `tournament_sponsor_fk` (`sponsor`),
- CONSTRAINT `tournament_sponsor_fk` FOREIGN KEY (`sponsor`) REFERENCES `tournament_sponsor` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT COMMENT='Tournament is modeled on civicrm_event'
-;
-
-DROP TABLE IF EXISTS `tournament_event_xref`;
-CREATE TABLE `tournament_event_xref` (
- `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'tournament FK',
- `event` int(10) unsigned NOT NULL COMMENT 'civicrm_event FK',
- PRIMARY KEY (`tournament`),
- KEY `event` (`event`),
- CONSTRAINT `tournament` FOREIGN KEY (`tournament`) REFERENCES `tournament` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
-;
-
-DROP TABLE IF EXISTS  `tournament_age_group` ;
-CREATE TABLE `tournament_age_group` (
- `id` varchar(20) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
- `title` varchar(512) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, human readable identifier',
- `description` text CHARACTER SET utf8 COLLATE utf8_unicode_ci,
- `tournament` varchar(20) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT 'tournament FK',
- `age_group` int(10) unsigned NOT NULL COMMENT 'age_group FK',
- PRIMARY KEY (`id`),
- UNIQUE KEY `tournament` (`tournament`,`age_group`),
- KEY `age_group_fk` (`age_group`),
- CONSTRAINT `age_group_fk` FOREIGN KEY (`age_group`) REFERENCES `age_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
- CONSTRAINT `tournament_fk` FOREIGN KEY (`tournament`) REFERENCES `tournament` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT COMMENT='modeled on civicrm_option_value'
-;
-
-DROP TABLE IF EXISTS `competition`;
-CREATE TABLE `competition` (
- `id` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'unique, machine readable identifier',
- `type` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
- `title` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
- `description` text COLLATE utf8_unicode_ci,
- `nRounds` int(10) unsigned NOT NULL,
- `tournament_age_group` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'FK',
- PRIMARY KEY (`id`),
- UNIQUE KEY `tournament_age_group` (`tournament_age_group`,`type`),
- KEY `competition_type` (`type`),
- CONSTRAINT `competition_ibfk_1` FOREIGN KEY (`tournament_age_group`) REFERENCES `tournament_age_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
- CONSTRAINT `competition_type` FOREIGN KEY (`type`) REFERENCES `competition_type` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='which competitions does a tournament comprise'
-;
-
-DROP TABLE IF EXISTS  `competition_person` ;
-CREATE TABLE `competition_person` (
- `competition` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
- `person` int(10) unsigned NOT NULL COMMENT 'FK to person',
- `status` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT 'registered',
- `role` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT 'player',
- `register_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
- `source` varchar(128) COLLATE utf8_unicode_ci DEFAULT NULL COMMENT 'Source of this event registration.',
- `registered_by_id` int(10) unsigned DEFAULT NULL COMMENT 'FK to Participant ID',
- PRIMARY KEY (`person`,`competition`),
- KEY `index_status_id` (`status`),
- KEY `index_role_id` (`role`),
- KEY `FK_civicrm_participant_contact_id` (`person`),
- KEY `FK_civicrm_participant_event_id` (`competition`),
- KEY `FK_civicrm_participant_registered_by_id` (`registered_by_id`),
- CONSTRAINT `competition_person_ibfk_1` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
- CONSTRAINT `competition_person_ibfk_2` FOREIGN KEY (`competition`) REFERENCES `competition` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
- CONSTRAINT `competition_person_ibfk_3` FOREIGN KEY (`registered_by_id`) REFERENCES `person` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='tournament registration kernel'
-;
-
--- Enforce unique competition per type, per person, per tournament
-CREATE OR REPLACE VIEW `tournament_competition_type_person` AS
-SELECT t.tournament, c.type,  `person`
-FROM `competition_person` cp
-JOIN competition c ON cp.competition = c.id
-JOIN tournament_age_group t ON t.id = c.tournament_age_group
-WHERE `status` LIKE 'registered'
-;
-
-CREATE TABLE `competition_team` (
- `competition` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
- `team` int(10) unsigned NOT NULL,
- UNIQUE KEY `team` (`team`,`competition`),
- KEY `competition` (`competition`),
- CONSTRAINT `competition_team_ibfk_1` FOREIGN KEY (`team`) REFERENCES `team` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
- CONSTRAINT `competition_team_ibfk_2` FOREIGN KEY (`competition`) REFERENCES `competition` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='pure join table'
-;
-
 DROP TABLE IF EXISTS `team_person`;
 CREATE TABLE `team_person` (
  `team` int(10) unsigned NOT NULL,
@@ -441,6 +419,21 @@ CREATE TABLE `team_person` (
  CONSTRAINT `team_person_ibfk_1` FOREIGN KEY (`team`) REFERENCES `team` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
  CONSTRAINT `team_person_ibfk_2` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
+;
+
+// Based on the competions its players are registered for, what competitions can this team register for?
+//   Which compeitions are all this teams players registered for?
+//   create a unique set of each person's competitions
+//   find the intersection of those person's competitions
+
+CREATE TABLE `competition_team` (
+ `competition` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
+ `team` int(10) unsigned NOT NULL,
+ UNIQUE KEY `team` (`team`,`competition`),
+ KEY `competition` (`competition`),
+ CONSTRAINT `competition_team_ibfk_1` FOREIGN KEY (`team`) REFERENCES `team` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `competition_team_ibfk_2` FOREIGN KEY (`competition`) REFERENCES `competition` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='pure join table'
 ;
 
 CREATE OR REPLACE
