@@ -203,6 +203,11 @@ CREATE TABLE `tournament_person` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='register a person for a tournament'
 ;
 
+CREATE OR REPLACE VIEW `registered_tournament_players` AS
+SELECT tp.`tournament` , tp.`person` , p.sort_name, p.age FROM `tournament_person` tp JOIN person_summary p ON p.id = tp.person
+WHERE `status` = 'registered' AND `primary_role` = 'player'
+;
+
 CREATE TABLE `tournament_team` (
  `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
  `team` int(10) unsigned NOT NULL COMMENT 'FK to Team ID',
@@ -230,6 +235,12 @@ CREATE TABLE `tournament_age_group` (
  CONSTRAINT `age_group_fk` FOREIGN KEY (`age_group`) REFERENCES `age_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
  CONSTRAINT `tournament_fk` FOREIGN KEY (`tournament`) REFERENCES `tournament` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT COMMENT='modeled on civicrm_option_value'
+;
+
+CREATE OR REPLACE VIEW `eligible_tournament_age_group_players` AS
+SELECT person, sort_name, a.id AS tournament_age_group FROM `registered_tournament_players` p
+JOIN tournament_age_group a ON a.tournament = p.tournament
+AND p.age <= 1+a.age_group
 ;
 
 DROP TABLE IF EXISTS `competition_style`;
@@ -284,7 +295,7 @@ CREATE TABLE `competition` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='which competitions does a tournament comprise'
 ;
 
-DROP TABLE IF EXISTS  `competition_person` ;
+DROP TABLE IF EXISTS `competition_person` ;
 CREATE TABLE `competition_person` (
  `competition` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
  `person` int(10) unsigned NOT NULL COMMENT 'FK to person',
@@ -305,26 +316,17 @@ CREATE TABLE `competition_person` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='tournament registration kernel'
 ;
 
+CREATE OR REPLACE VIEW `registered_competition_players` AS
+SELECT `competition` , `person` FROM `competition_person`
+WHERE `status` = 'registered' AND `role` = 'player'
+;
+
 -- Enforce unique competition per type, per person, per tournament
-CREATE OR REPLACE VIEW `tournament_competition_type_person` AS
-SELECT t.tournament, c.type,  `person`
-FROM `competition_person` cp
+CREATE OR REPLACE VIEW `registered_tournament_competition_type_person` AS
+SELECT t.tournament, c.type, `person` FROM `competition_person` cp
 JOIN competition c ON cp.competition = c.id
 JOIN tournament_age_group t ON t.id = c.tournament_age_group
-WHERE `status` LIKE 'registered'
-;
-
-CREATE OR REPLACE VIEW `registered_tournament_players` AS
-SELECT tp.`tournament` , tp.`person` , p.sort_name, p.age
-FROM `tournament_person` tp JOIN person_summary p ON p.id = tp.person
-WHERE `status` = 'registered' AND `primary_role` = 'player'
-;
-
-CREATE OR REPLACE VIEW `eligible_tournament_age_group_players` AS
-SELECT person, sort_name, a.id AS tournament_age_group
-FROM `registered_tournament_players` p
-JOIN tournament_age_group a ON a.tournament = p.tournament
-AND p.age <= 1+a.age_group
+WHERE `status` = 'registered'
 ;
 
 CREATE OR REPLACE VIEW  `eligible_competition_players` AS 
@@ -347,7 +349,7 @@ FOR EACH ROW BEGIN
       SIGNAL SQLSTATE '45000'
       SET MESSAGE_TEXT = @messageText;
     END;
-  ELSEIF(SELECT count(c.id) FROM tournament_competition_type_person tctp JOIN competition c ON c.type = tctp.type WHERE person = NEW.person AND c.id = NEW.competition) > 0 
+  ELSEIF(SELECT count(c.id) FROM registered_tournament_competition_type_person tctp JOIN competition c ON c.type = tctp.type WHERE person = NEW.person AND c.id = NEW.competition) > 0 
     THEN BEGIN
       select CONCAT('Cannot add row to competition_person. Person: ', NEW.person, ' is already registered for a competition like: ', NEW.competition) into @messageText;
       SIGNAL SQLSTATE '45000'
@@ -379,7 +381,7 @@ FOR EACH ROW BEGIN
       SELECT type FROM competition WHERE id = new.competition into @newType;
       IF (new.person != old.person || @oldType != @newType) 
         THEN BEGIN
-          IF(SELECT count(c.id) FROM tournament_competition_type_person tctp JOIN competition c ON c.type = tctp.type WHERE person = NEW.person AND c.id = NEW.competition) > 0 
+          IF(SELECT count(c.id) FROM registered_tournament_competition_type_person tctp JOIN competition c ON c.type = tctp.type WHERE person = NEW.person AND c.id = NEW.competition) > 0 
             THEN BEGIN
               select CONCAT('Cannot update competition_person. Person: ', NEW.person, ' is already registered for a competition like: ', NEW.competition) into @messageText;
               SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @messageText;
@@ -395,51 +397,109 @@ delimiter ;
 
 CREATE OR REPLACE VIEW `tournament_player_competition_set` AS
 SELECT tournament, t.person, group_concat( c.`competition` ) AS competition_set
-FROM tournament_person t JOIN `competition_person` c ON c.person = t.person
-WHERE c.status = 'registered' AND `role` = 'player'
+FROM registered_tournament_players t JOIN `competition_person` c ON c.person = t.person
 GROUP BY tournament, person
+;
+
+CREATE OR REPLACE VIEW `registered_tournament_teams` AS
+SELECT tournament,team FROM `tournament_team` WHERE `status` = 'registered'
 ;
 
 CREATE OR REPLACE VIEW `tournament_team_player_count` AS
 SELECT tt.tournament, tt.team, count( teamp.person ) AS player_count
-FROM `tournament_team` tt JOIN team_person teamp ON teamp.team = tt.team AND teamp.role = 'player'
-JOIN tournament_person p ON p.tournament = tt.tournament AND p.person = teamp.person
-WHERE tt.status = 'registered' AND p.status = 'registered'
+FROM `registered_tournament_teams` tt JOIN team_person teamp ON teamp.team = tt.team AND teamp.role = 'player'
+JOIN registered_tournament_players p ON p.tournament = tt.tournament AND p.person = teamp.person
 GROUP BY tt.team
 ;
 
-/* 
-   Based on the competions its players are registered for, what competitions can this team register for?
-     Which competitions are all this teams' players registered for? Test with PB
-     create a unique set of each person's competitions
-     find the intersection of those person's competitions
-*/
-
 CREATE OR REPLACE VIEW `team_player_competition_count` AS
 SELECT tt.team, cp.competition AS player_competition, count( cp.competition ) AS player_competition_count
-FROM `tournament_team` tt JOIN team_person teamp ON teamp.team = tt.team
-JOIN competition_person cp ON cp.person = teamp.person JOIN competition c ON c.id = cp.competition
-JOIN tournament_age_group a ON a.id = c.tournament_age_group
-AND a.tournament = tt.tournament
-WHERE tt.status = 'registered' AND cp.status = 'registered'
+FROM `registered_tournament_teams` tt JOIN team_person teamp ON teamp.team = tt.team
+JOIN registered_competition_players cp ON cp.person = teamp.person JOIN competition c ON c.id = cp.competition
+JOIN tournament_age_group a ON a.id = c.tournament_age_group AND a.tournament = tt.tournament
 GROUP BY tt.team, cp.competition
 ;
 
 CREATE TABLE `competition_team` (
  `competition` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
  `team` int(10) unsigned NOT NULL,
+ PRIMARY KEY (`competition`,`team`),
  UNIQUE KEY `team` (`team`,`competition`),
  KEY `competition` (`competition`),
- CONSTRAINT `competition_team_ibfk_1` FOREIGN KEY (`team`) REFERENCES `team` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
- CONSTRAINT `competition_team_ibfk_2` FOREIGN KEY (`competition`) REFERENCES `competition` (`id`)
+ CONSTRAINT `competition_team_ibfk_1` FOREIGN KEY (`team`) REFERENCES `tournament_team` (`team`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `competition_team_ibfk_2` FOREIGN KEY (`competition`) REFERENCES `competition` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='pure join table'
 ;
 
 CREATE OR REPLACE VIEW `eligible_team_competitions` AS
-SELECT t.tournament, t.team, t.player_count, c.player_competition
+SELECT t.tournament, t.team, t.player_count, c.player_competition AS competition
 FROM `tournament_team_player_count` t JOIN team_player_competition_count c ON c.team = t.team
 AND t.player_count = c.player_competition_count
+LEFT JOIN competition_team ct on ct.competition = c.player_competition AND ct.team = t.team WHERE ct.competition IS NULL
 ;
+
+-- Enforce unique competition per type, per team, per tournament
+CREATE OR REPLACE VIEW `registered_tournament_competition_type_team` AS
+SELECT t.tournament, c.type, `team` FROM `competition_team` ct
+JOIN competition c ON ct.competition = c.id
+JOIN tournament_age_group t ON t.id = c.tournament_age_group
+;
+
+-- create a trigger that rejects inserts to competition_team that 
+-- 1) aren't in eligible_team_competitions or 
+-- 2) are already registered for that tournament and competition type
+-- 3) have players on teams already registered for that tournament and competition type
+
+DROP TRIGGER IF EXISTS `competition_team_before_insert`;
+
+DELIMITER //
+CREATE TRIGGER `competition_team_before_insert` BEFORE INSERT ON `competition_team`
+FOR EACH ROW BEGIN 
+  IF(SELECT COUNT( e.team ) FROM eligible_team_competitions e WHERE e.team = NEW.team AND e.competition = NEW.competition ) = 0
+    THEN BEGIN
+      select CONCAT('Cannot add row to competition_team. Team: ', NEW.team, ' is not eligible for competition: ', NEW.competition) into @messageText;
+      SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = @messageText;
+    END;
+  ELSEIF(SELECT count(c.id) FROM registered_tournament_competition_type_team tctp JOIN competition c ON c.type = tctp.type WHERE team = NEW.team AND c.id = NEW.competition) > 0 
+    THEN BEGIN
+      select CONCAT('Cannot add row to competition_team. Team: ', NEW.team, ' is already registered for a competition like: ', NEW.competition) into @messageText;
+      SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = @messageText;
+    END;
+  END IF;
+
+END;
+//
+delimiter ;
+
+-- create a trigger that rejects updates to competition_team that 
+-- 1) aren't in eligible_team_competitions or 
+-- 2) are already registered for that tournament and competition type
+-- 3) have players on teams already registered for that tournament and competition type
+
+DROP TRIGGER IF EXISTS `competition_team_before_update`;
+
+DELIMITER //
+CREATE TRIGGER `competition_team_before_update` BEFORE UPDATE ON `competition_team`
+FOR EACH ROW BEGIN 
+  IF(SELECT COUNT( e.team ) FROM eligible_team_competitions e WHERE e.team = NEW.team AND e.competition = NEW.competition ) = 0
+    THEN BEGIN
+      select CONCAT('Cannot update competition_team. Team: ', NEW.team, ' is not eligible for competition: ', NEW.competition) into @messageText;
+      SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = @messageText;
+    END;
+  ELSEIF(SELECT count(c.id) FROM registered_tournament_competition_type_team tctp JOIN competition c ON c.type = tctp.type WHERE team = NEW.team AND c.id = NEW.competition) > 0 
+    THEN BEGIN
+      select CONCAT('Cannot update competition_team. Team: ', NEW.team, ' is already registered for a competition like: ', NEW.competition) into @messageText;
+      SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = @messageText;
+    END;
+  END IF;
+
+END;
+//
+delimiter ;
 
 /* civicrm interface
 DROP TABLE IF EXISTS `person_contact_xref`;
