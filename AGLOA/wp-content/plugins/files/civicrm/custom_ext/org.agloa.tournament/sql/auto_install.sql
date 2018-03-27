@@ -501,7 +501,15 @@ END;
 //
 delimiter ;
 
-/* civicrm interface
+CREATE OR REPLACE VIEW `player_team_summary` AS
+SELECT rcp.person AS player, p.sort_name, rcp.competition, ct.team, team.title FROM `registered_competition_players` rcp
+RIGHT JOIN competition_team ct ON ct.competition = rcp.competition
+JOIN person_summary p ON rcp.person = p.id JOIN team ON team.id = ct.team
+ORDER BY `p`.`sort_name` ASC
+;
+
+
+-- civicrm interface
 DROP TABLE IF EXISTS `person_contact_xref`;
 CREATE TABLE `person_contact_xref` (
  `person` int(10) unsigned NOT NULL,
@@ -512,6 +520,27 @@ CREATE TABLE `person_contact_xref` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Link person to CiviCRM individual'
 ;
 
+CREATE OR REPLACE VIEW `contact_ids_to_import` AS
+SELECT c.id FROM `civicrm_contact` c LEFT JOIN person_contact_xref x ON c.id = x.contact
+WHERE x.contact IS NULL
+;
+
+CREATE OR REPLACE VIEW `person_from_contact` AS 
+select `c`.`id` AS `id`,`c`.`first_name` AS `first_name`,`c`.`middle_name` AS `middle_name`,`c`.`last_name` AS `last_name`
+,`prefix`.`label` AS `prefix`,`suffix`.`label` AS `suffix`,left(`gender`.`label`,1) AS `gender`
+,`c`.`birth_date` AS `birth_date` 
+from `civicrm_contact` `c` 
+left join `civicrm_option_value` `prefix` on `prefix`.`value` = `c`.`prefix_id` and `prefix`.`option_group_id` = (SELECT id FROM individual_prefix_option_group)
+left join `civicrm_option_value` `suffix` on `suffix`.`value` = `c`.`suffix_id` and `suffix`.`option_group_id` = (SELECT id FROM individual_suffix_option_group)
+left join `civicrm_option_value` `gender` on `gender`.`value` = `c`.`gender_id` and `gender`.`option_group_id` = (SELECT id FROM gender_option_group)
+where `c`.`first_name` is not null and `c`.`last_name` is not null
+;
+
+CREATE OR REPLACE VIEW `contacts_to_import` AS
+SELECT pfc.* FROM `person_from_contact` pfc JOIN contact_ids_to_import i ON pfc.id = i.id
+;
+
+/* 
 DROP TABLE IF EXISTS `tournament_event_xref`;
 CREATE TABLE `tournament_event_xref` (
  `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'tournament FK',
@@ -609,17 +638,6 @@ LEFT JOIN civicrm_option_value individual_prefix ON individual_prefix.name = per
 (SELECT id FROM individual_prefix_option_group)
 LEFT JOIN civicrm_option_value individual_suffix ON individual_suffix.name = person.suffix AND individual_suffix.option_group_id = 
 (SELECT id FROM individual_suffix_option_group);
-
-CREATE OR REPLACE VIEW `person_from_contact` AS 
-select `c`.`id` AS `id`,`c`.`first_name` AS `first_name`,`c`.`middle_name` AS `middle_name`,`c`.`last_name` AS `last_name`
-,`prefix`.`label` AS `prefix`,`suffix`.`label` AS `suffix`,left(`gender`.`label`,1) AS `gender`
-,`c`.`birth_date` AS `birth_date` 
-from `civicrm_contact` `c` 
-left join `civicrm_option_value` `prefix` on `prefix`.`value` = `c`.`prefix_id` and `prefix`.`option_group_id` = (SELECT id FROM individual_prefix_option_group)
-left join `civicrm_option_value` `suffix` on `suffix`.`value` = `c`.`suffix_id` and `suffix`.`option_group_id` = (SELECT id FROM individual_suffix_option_group)
-left join `civicrm_option_value` `gender` on `gender`.`value` = `c`.`gender_id` and `gender`.`option_group_id` = (SELECT id FROM gender_option_group)
-where `c`.`first_name` is not null and `c`.`last_name` is not null;
-
 
 
 CREATE OR REPLACE VIEW `teams_created_by` AS
