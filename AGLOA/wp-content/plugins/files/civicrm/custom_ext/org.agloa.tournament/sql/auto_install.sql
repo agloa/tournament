@@ -520,13 +520,24 @@ CREATE TABLE `person_contact_xref` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Link person to CiviCRM individual'
 ;
 
+DROP TRIGGER IF EXISTS `person_after_insert`;
+CREATE TRIGGER `person_after_insert` AFTER INSERT ON `person`
+FOR EACH ROW INSERT IGNORE INTO `person_contact_xref` ( person, contact )
+SELECT `id` , `external_identifier` FROM `person` WHERE person.id = new.id
+;
+
+DROP TRIGGER IF EXISTS `person_after_update`;
+CREATE TRIGGER `person_after_update` AFTER UPDATE ON `person` FOR EACH ROW UPDATE person_contact_xref
+SET person_contact_xref.contact = new.external_identifier WHERE person_contact_xref.person = new.id
+;
+
 CREATE OR REPLACE VIEW `contact_ids_to_import` AS
 SELECT c.id FROM `civicrm_contact` c LEFT JOIN person_contact_xref x ON c.id = x.contact
 WHERE x.contact IS NULL
 ;
 
 CREATE OR REPLACE VIEW `person_from_contact` AS 
-select `c`.`id` AS `id`,`c`.`first_name` AS `first_name`,`c`.`middle_name` AS `middle_name`,`c`.`last_name` AS `last_name`
+select `c`.`id` AS `id`,`c`.`id` AS `external_identifier`,`c`.`first_name` AS `first_name`,`c`.`middle_name` AS `middle_name`,`c`.`last_name` AS `last_name`
 ,`prefix`.`label` AS `prefix`,`suffix`.`label` AS `suffix`,left(`gender`.`label`,1) AS `gender`
 ,`c`.`birth_date` AS `birth_date` 
 from `civicrm_contact` `c` 
@@ -537,10 +548,37 @@ where `c`.`first_name` is not null and `c`.`last_name` is not null
 ;
 
 CREATE OR REPLACE VIEW `contacts_to_import` AS
-SELECT pfc.* FROM `person_from_contact` pfc JOIN contact_ids_to_import i ON pfc.id = i.id
+select `pfc`.`id` AS `id`,`pfc`.`external_identifier` AS `external_identifier`,`pfc`.`first_name` AS `first_name`,`pfc`.`middle_name` AS `middle_name`,`pfc`.`last_name` AS `last_name`,`pfc`.`prefix` AS `prefix`,`pfc`.`suffix` AS `suffix`,`pfc`.`gender` AS `gender`,`pfc`.`birth_date` AS `birth_date` 
+from (`person_from_contact` `pfc` join `contact_ids_to_import` `i` on((`pfc`.`id` = `i`.`id`)))
 ;
 
-/* 
+DROP PROCEDURE IF EXISTS `update_person_from_contact`;
+delimiter //
+CREATE PROCEDURE `update_person_from_contact`() DETERMINISTIC NO SQL SQL SECURITY DEFINER 
+BEGIN
+INSERT IGNORE INTO person( `id`, external_identifier, `first_name`, `middle_name`, `last_name`, `prefix`, `suffix`, `gender`, `birth_date` )
+SELECT `id`,`id`, `first_name`, `middle_name`, `last_name`, `prefix`, `suffix`, `gender`, `birth_date` 
+FROM `person_from_contact`;
+UPDATE person p JOIN person_from_contact c ON p.id = c.id
+SET p.first_name = c.first_name
+, p.middle_name = c.middle_name
+, p.last_name = c.last_name
+, p.prefix = c.prefix
+, p.suffix = c.suffix
+, p.gender = c.gender
+, p.birth_date = c.birth_date;
+END
+//
+delimiter ;
+
+CREATE OR REPLACE  VIEW `event_type_option_group` AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'event_type' ;
+
+CREATE OR REPLACE VIEW `event_type_value` AS
+SELECT civicrm_option_value.value FROM `civicrm_option_value`
+JOIN event_type_option_group ON event_type_option_group.id = option_group_id
+WHERE name = 'Tournament'
+;
+ 
 DROP TABLE IF EXISTS `tournament_event_xref`;
 CREATE TABLE `tournament_event_xref` (
  `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'tournament FK',
@@ -551,32 +589,18 @@ CREATE TABLE `tournament_event_xref` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
 ;
 
-CREATE OR REPLACE
- VIEW `gender_option_group`
- AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'gender' ;
+CREATE OR REPLACE  VIEW `gender_option_group` AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'gender' ;
 
-CREATE OR REPLACE
- VIEW `individual_prefix_option_group`
- AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'individual_prefix' ;
+CREATE OR REPLACE  VIEW `individual_prefix_option_group` AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'individual_prefix' ;
 
-CREATE OR REPLACE
- VIEW `individual_suffix_option_group`
- AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'individual_suffix' ;
+CREATE OR REPLACE VIEW `individual_suffix_option_group` AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'individual_suffix' ;
 
-CREATE OR REPLACE
- VIEW `group_type_option_group`
- AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'group_type' ;
+CREATE OR REPLACE VIEW `group_type_option_group` AS SELECT `id` FROM `civicrm_option_group` WHERE `name` = 'group_type' ;
  
 CREATE OR REPLACE VIEW `sceduling_group_value` AS
 SELECT civicrm_option_value.value FROM `civicrm_option_value`
 JOIN group_type_option_group ON group_type_option_group.id = option_group_id
 WHERE name = 'Scheduling Group'
-;
-
-CREATE OR REPLACE VIEW `registration_group_value` AS
-SELECT civicrm_option_value.value FROM `civicrm_option_value`
-JOIN group_type_option_group ON group_type_option_group.id = option_group_id
-WHERE name = 'Registration Group'
 ;
 
 DROP TABLE IF EXISTS `scheduling_group_xref`;
@@ -589,6 +613,17 @@ CREATE TABLE `scheduling_group_xref` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
 ;
 
+CREATE OR REPLACE VIEW `civicrm_scheduling_groups` AS
+SELECT `id` , `name` , `title` , `description`
+FROM `civicrm_group` WHERE `group_type` LIKE CONCAT( '%', (SELECT value FROM `sceduling_group_value`), '%' ) 
+;
+
+DROP PROCEDURE IF EXISTS `update_scheduling_groups`;
+CREATE PROCEDURE `update_scheduling_groups` ( ) DETERMINISTIC NO SQL SQL SECURITY DEFINER 
+INSERT IGNORE INTO scheduling_group_xref( scheduling_group, civicrm_group )
+SELECT sg.`id` , cg.id FROM `scheduling_group` sg LEFT JOIN civicrm_scheduling_groups cg ON sg.label = cg.title
+;
+
 DROP TABLE IF EXISTS `registration_group_xref`;
 CREATE TABLE `registration_group_xref` (
  `registration_group` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'registration_group FK',
@@ -599,11 +634,30 @@ CREATE TABLE `registration_group_xref` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
 ;
 
+CREATE OR REPLACE VIEW `registration_group_value` AS
+SELECT civicrm_option_value.value FROM `civicrm_option_value`
+JOIN group_type_option_group ON group_type_option_group.id = option_group_id
+WHERE name = 'Registration Group'
+;
+
 CREATE OR REPLACE VIEW `civicrm_registration_groups` AS
 SELECT `id` , `name` , `title` , `description`
 FROM `civicrm_group` WHERE `group_type` LIKE CONCAT( '%', (SELECT value FROM `registration_group_value`), '%' ) 
+; 
+
+DROP PROCEDURE IF EXISTS `update_registration_groups`;
+delimiter //
+CREATE PROCEDURE `update_registration_groups`() NO SQL DETERMINISTIC
+BEGIN
+DELETE FROM registration_group_xref WHERE civicrm_group = 0;
+INSERT IGNORE INTO registration_group_xref( registration_group, civicrm_group )
+SELECT rg.`id` , cg.id FROM `registration_group` rg LEFT JOIN civicrm_registration_groups cg ON rg.label = cg.title;
+END
 ;
- 
+//
+delimiter ;
+
+/*
 CREATE OR REPLACE VIEW `team_group_value` AS
 SELECT civicrm_option_value.value FROM `civicrm_option_value`
 JOIN group_type_option_group ON group_type_option_group.id = option_group_id
@@ -899,24 +953,6 @@ CREATE OR REPLACE VIEW `agloa_active_team_competition_type` AS
 select `latest_active_agloa_team_data`.`team_id` AS `team_id`,concat(`latest_active_agloa_team_data`.`EQ`,'EQ') AS `competition`,(select `competition_type`.`name` from `competition_type` where (`competition_type`.`label` = 'EQ')) AS `competition_type` from `latest_active_agloa_team_data` where (`latest_active_agloa_team_data`.`EQ` <> '') union select `latest_active_agloa_team_data`.`team_id` AS `team_id`,concat(`latest_active_agloa_team_data`.`OS`,'OS') AS `competition`,(select `competition_type`.`name` from `competition_type` where (`competition_type`.`label` = 'OS')) AS `competition_type` from `latest_active_agloa_team_data` where (`latest_active_agloa_team_data`.`OS` <> '') union select `latest_active_agloa_team_data`.`team_id` AS `team_id`,concat(`latest_active_agloa_team_data`.`LI`,'LI') AS `competition`,(select `competition_type`.`name` from `competition_type` where (`competition_type`.`label` = 'Ling')) AS `competition_type` from `latest_active_agloa_team_data` where (`latest_active_agloa_team_data`.`LI` <> '') union select `latest_active_agloa_team_data`.`team_id` AS `team_id`,concat(`latest_active_agloa_team_data`.`PROP`,'PROP') AS `competition`,(select `competition_type`.`name` from `competition_type` where (`competition_type`.`label` = 'PROP')) AS `competition_type` from `latest_active_agloa_team_data` where (`latest_active_agloa_team_data`.`PROP` <> '') union select `latest_active_agloa_team_data`.`team_id` AS `team_id`,concat(`latest_active_agloa_team_data`.`PREZ`,'PREZ') AS `competition`,(select `competition_type`.`name` from `competition_type` where (`competition_type`.`label` = 'PREZ')) AS `competition_type` from `latest_active_agloa_team_data` where (`latest_active_agloa_team_data`.`PREZ` <> '') union select `latest_active_agloa_team_data`.`team_id` AS `team_id`,concat(`latest_active_agloa_team_data`.`WE`,'WE') AS `competition`,(select `competition_type`.`name` from `competition_type` where (`competition_type`.`label` = 'Theme')) AS `competition_type` from `latest_active_agloa_team_data` where (`latest_active_agloa_team_data`.`WE` <> '') union select `latest_active_agloa_team_data`.`team_id` AS `team_id`,concat(`latest_active_agloa_team_data`.`CE`,'CE') AS `competition`,(select `competition_type`.`name` from `competition_type` where (`competition_type`.`label` = 'CE')) AS `competition_type` from `latest_active_agloa_team_data` where (`latest_active_agloa_team_data`.`CE` <> '') union select `latest_active_agloa_team_data`.`team_id` AS `team_id`,concat(`latest_active_agloa_team_data`.`WFF`,'Wff') AS `competition`,(select `competition_type`.`name` from `competition_type` where (`competition_type`.`label` = 'Wff')) AS `competition_type` from `latest_active_agloa_team_data` where (`latest_active_agloa_team_data`.`WFF` <> '')
 ;
 
-delimiter //
-CREATE PROCEDURE `update_person_from_contact`() DETERMINISTIC NO SQL SQL SECURITY DEFINER 
-BEGIN
-INSERT IGNORE INTO person( `id`, external_identifier, `first_name`, `middle_name`, `last_name`, `prefix`, `suffix`, `gender`, `birth_date` )
-SELECT `id`,`id`, `first_name`, `middle_name`, `last_name`, `prefix`, `suffix`, `gender`, `birth_date` 
-FROM `person_from_contact`;
-UPDATE person JOIN person_from_contact ON person_from_contact.id = new.id 
-SET person.first_name = person_from_contact.first_name
-, person.middle_name = person_from_contact.middle_name
-, person.last_name = person_from_contact.last_name
-, person.prefix = person_from_contact.prefix
-, person.suffix = person_from_contact.suffix
-, person.gender = person_from_contact.gender
-, person.birth_date = person_from_contact.birth_date;
-END
-//
-delimiter ;
-
 CREATE PROCEDURE `update_contact_from_person`() DETERMINISTIC NO SQL SQL SECURITY DEFINER 
 INSERT INTO civicrm_contact(first_name, middle_name, last_name,prefix_id,suffix_id, gender_id, birth_date)
 SELECT first_name, middle_name, last_name,prefix_id,suffix_id, gender_id, birth_date FROM person_to_contact;
@@ -949,16 +985,6 @@ SET person.first_name = person_from_contact.first_name
 , person.gender = person_from_contact.gender
 , person.birth_date = person_from_contact.birth_date
 WHERE person.external_identifier = new.id;
-
-CREATE TRIGGER `person_after_insert` AFTER INSERT ON `person`
-FOR EACH
-ROW INSERT IGNORE INTO `person_contact_xref` ( person, contact )
-SELECT `id` , `external_identifier`
-FROM `person`
-WHERE person.id = new.id;
-
-CREATE TRIGGER `person_after_update` AFTER UPDATE ON `person` FOR EACH ROW UPDATE person_contact_xref
-SET person_contact_xref.contact = new.external_identifier WHERE person_contact_xref.person = new.id;
 
 CREATE  TRIGGER `civicrm_group_after_insert` AFTER INSERT ON `civicrm_group` FOR EACH ROW 
 IF (new.group_type) LIKE CONCAT( CONCAT( '%', (SELECT value FROM sceduling_group_value) ) , '%' ) THEN
