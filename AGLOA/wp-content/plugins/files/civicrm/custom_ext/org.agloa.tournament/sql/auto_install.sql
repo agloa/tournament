@@ -110,7 +110,7 @@ DROP TABLE IF EXISTS `registration_group_person` ;
 CREATE TABLE `registration_group_person` (
  `registration_group` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'FK to egistration_group',
  `person` int(10) unsigned NOT NULL COMMENT 'FK to person',
- `status` varchar(8) COLLATE utf8_unicode_ci DEFAULT '''Added''' COMMENT 'status of person relative to membership in group',
+ `status` varchar(8) COLLATE utf8_unicode_ci DEFAULT 'Added' COMMENT 'status of person relative to membership in group',
  PRIMARY KEY (`registration_group`,`person`),
  KEY `person` (`person`),
  CONSTRAINT `registration_group_person_ibfk_1` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -656,6 +656,15 @@ END
 ;
 //
 delimiter ;
+
+CREATE PROCEDURE `update_registration_group_person` ( ) DETERMINISTIC NO SQL SQL SECURITY DEFINER 
+INSERT IGNORE INTO `registration_group_person` ( registration_group, person )
+SELECT rgx.registration_group, pcx.person
+FROM `civicrm_group_contact` cgc
+JOIN registration_group_xref rgx ON rgx.civicrm_group = cgc.`group_id`
+JOIN person_contact_xref pcx ON pcx.person = cgc.`contact_id` 
+;
+
 
 /*
 CREATE OR REPLACE VIEW `team_group_value` AS
