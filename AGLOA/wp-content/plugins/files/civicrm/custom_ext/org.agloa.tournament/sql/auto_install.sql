@@ -508,7 +508,7 @@ JOIN person_summary p ON rcp.person = p.id JOIN team ON team.id = ct.team
 ORDER BY `p`.`sort_name` ASC
 ;
 
-
+/*
 -- civicrm interface
 DROP TABLE IF EXISTS `person_contact_xref`;
 CREATE TABLE `person_contact_xref` (
@@ -516,7 +516,8 @@ CREATE TABLE `person_contact_xref` (
  `contact` int(10) unsigned NOT NULL,
  PRIMARY KEY (`person`),
  KEY `contact` (`contact`),
- CONSTRAINT `person_contact_xref_ibfk_2` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON UPDATE CASCADE
+ CONSTRAINT `person_contact_xref_ibfk_1` FOREIGN KEY (`contact`) REFERENCES `civicrm_contact` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `person_contact_xref_ibfk_2` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Link person to CiviCRM individual'
 ;
 
@@ -609,13 +610,19 @@ CREATE TABLE `scheduling_group_xref` (
  `civicrm_group` int(10) unsigned NOT NULL COMMENT 'civicrm group FK',
  PRIMARY KEY (`scheduling_group`),
  KEY `event` (`civicrm_group`),
- CONSTRAINT `scheduling_group_xref_ibfk_1` FOREIGN KEY (`scheduling_group`) REFERENCES `scheduling_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+ CONSTRAINT `scheduling_group_xref_ibfk_1` FOREIGN KEY (`scheduling_group`) REFERENCES `scheduling_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `scheduling_group_xref_ibfk_2` FOREIGN KEY (`civicrm_group`) REFERENCES `civicrm_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
 ;
 
 CREATE OR REPLACE VIEW `civicrm_scheduling_groups` AS
 SELECT `id` , `name` , `title` , `description`
 FROM `civicrm_group` WHERE `group_type` LIKE CONCAT( '%', (SELECT value FROM `sceduling_group_value`), '%' ) 
+;
+
+CREATE OR REPLACE VIEW `unreferenced_civicrm_scheduling_groups` AS
+SELECT c.`id` , c.`title` FROM `civicrm_scheduling_groups` c LEFT JOIN scheduling_group_xref x ON x.civicrm_group = c.id
+WHERE x.scheduling_group IS NULL 
 ;
 
 DROP PROCEDURE IF EXISTS `update_scheduling_groups`;
@@ -630,7 +637,8 @@ CREATE TABLE `registration_group_xref` (
  `civicrm_group` int(10) unsigned NOT NULL COMMENT 'civicrm group FK',
  PRIMARY KEY (`registration_group`),
  KEY `event` (`civicrm_group`),
- CONSTRAINT `registration_group_xref_ibfk_1` FOREIGN KEY (`registration_group`) REFERENCES `registration_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+ CONSTRAINT `registration_group_xref_ibfk_1` FOREIGN KEY (`registration_group`) REFERENCES `registration_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `registration_group_xref_ibfk_2` FOREIGN KEY (`civicrm_group`) REFERENCES `civicrm_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
 ;
 
@@ -645,18 +653,18 @@ SELECT `id` , `name` , `title` , `description`
 FROM `civicrm_group` WHERE `group_type` LIKE CONCAT( '%', (SELECT value FROM `registration_group_value`), '%' ) 
 ; 
 
+CREATE OR REPLACE VIEW `unreferenced_civicrm_registration_groups` AS
+SELECT c.`id` , c.`title` FROM `civicrm_registration_groups` c LEFT JOIN registration_group_xref x ON x.civicrm_group = c.id
+WHERE x.registration_group IS NULL 
+;
+
 DROP PROCEDURE IF EXISTS `update_registration_groups`;
-delimiter //
 CREATE PROCEDURE `update_registration_groups`() NO SQL DETERMINISTIC
-BEGIN
-DELETE FROM registration_group_xref WHERE civicrm_group = 0;
 INSERT IGNORE INTO registration_group_xref( registration_group, civicrm_group )
 SELECT rg.`id` , cg.id FROM `registration_group` rg LEFT JOIN civicrm_registration_groups cg ON rg.label = cg.title;
-END
 ;
-//
-delimiter ;
 
+DROP PROCEDURE IF EXISTS `update_registration_group_person`;
 CREATE PROCEDURE `update_registration_group_person` ( ) DETERMINISTIC NO SQL SQL SECURITY DEFINER 
 INSERT IGNORE INTO `registration_group_person` ( registration_group, person )
 SELECT rgx.registration_group, pcx.person
@@ -665,23 +673,45 @@ JOIN registration_group_xref rgx ON rgx.civicrm_group = cgc.`group_id`
 JOIN person_contact_xref pcx ON pcx.person = cgc.`contact_id` 
 ;
 
+DROP TABLE IF EXISTS `team_group_xref`;
+CREATE TABLE `team_group_xref` (
+ `team` int(10) unsigned NOT NULL COMMENT 'team FK',
+ `civicrm_group` int(10) unsigned DEFAULT NULL COMMENT 'civicrm group FK',
+ PRIMARY KEY (`team`),
+ KEY `civicrm_group` (`civicrm_group`),
+ CONSTRAINT `team_group_xref_ibfk_1` FOREIGN KEY (`team`) REFERENCES `team` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+ CONSTRAINT `team_group_xref_ibfk_2` FOREIGN KEY (`civicrm_group`) REFERENCES `civicrm_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='civicrm interface'
+;
 
-/*
 CREATE OR REPLACE VIEW `team_group_value` AS
 SELECT civicrm_option_value.value FROM `civicrm_option_value`
 JOIN group_type_option_group ON group_type_option_group.id = option_group_id
 WHERE name = 'Team'
 ;
 
-CREATE OR REPLACE VIEW `scheduling_group_ids` AS
-SELECT id FROM `civicrm_group`
-WHERE group_type LIKE CONCAT( CONCAT( '%', (SELECT value FROM sceduling_group_value) ) , '%' )
+CREATE OR REPLACE VIEW `civicrm_team_groups` AS
+SELECT `id` , `name` , `title` , `description`
+FROM `civicrm_group` WHERE `group_type` LIKE CONCAT( '%', (SELECT value FROM `team_group_value`), '%' ) 
+; 
+
+CREATE OR REPLACE VIEW `unreferenced_civicrm_team_groups` AS
+SELECT c.`id` , c.`title` FROM `civicrm_team_groups` c LEFT JOIN team_group_xref x ON x.civicrm_group = c.id
+WHERE x.team IS NULL 
 ;
 
-CREATE OR REPLACE VIEW `team_group_ids` AS
-SELECT id FROM `civicrm_group`
-WHERE group_type LIKE CONCAT( CONCAT( '%', (SELECT value FROM team_group_value) ) , '%' )
-;
+DROP PROCEDURE IF EXISTS `update_team_groups`;
+DELIMITER //
+CREATE PROCEDURE `update_team_groups`() NO SQL DETERMINISTIC
+BEGIN
+INSERT IGNORE INTO team(id,title,name,description) SELECT c.id,c.title,c.name,c.description FROM `civicrm_team_groups` c;
+UPDATE team t JOIN civicrm_team_groups c ON t.id = c.id SET t.title = c.title, t.name = c.name;
+INSERT IGNORE INTO team_group_xref( team, civicrm_group ) SELECT t.`id` , cg.id FROM `team` t JOIN civicrm_team_groups cg ON t.title = cg.title;
+END
+//
+DELIMITER ;
+
+/*
 
 DROP TABLE IF EXISTS `sponsor_org_xref`;
 CREATE TABLE `sponsor_org_xref` (
