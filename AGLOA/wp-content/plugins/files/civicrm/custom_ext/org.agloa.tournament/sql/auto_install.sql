@@ -147,7 +147,7 @@ DROP TABLE IF EXISTS `scheduling_group_team`;
 CREATE TABLE `scheduling_group_team` (
  `scheduling_group` varchar(20) COLLATE utf8_unicode_ci NOT NULL COMMENT 'FK to scheduling_group',
  `team` int(10) unsigned NOT NULL COMMENT 'FK to team',
- `status` varchar(8) COLLATE utf8_unicode_ci DEFAULT '''Added''' COMMENT 'status of person relative to membership in group',
+ `status` varchar(8) COLLATE utf8_unicode_ci DEFAULT 'Added' COMMENT 'status of person relative to membership in group',
  PRIMARY KEY (`scheduling_group`,`team`),
  KEY `status` (`status`),
  KEY `team` (`team`),
@@ -160,13 +160,22 @@ DROP TABLE IF EXISTS `team_person`;
 CREATE TABLE `team_person` (
  `team` int(10) unsigned NOT NULL,
  `person` int(10) unsigned NOT NULL,
- `role` varchar(20) COLLATE utf8_unicode_ci DEFAULT 'player',
+ `role` varchar(20) COLLATE utf8_unicode_ci DEFAULT 'Player',
  KEY `role` (`role`),
  KEY `team` (`team`),
  KEY `person` (`person`),
  CONSTRAINT `team_person_ibfk_1` FOREIGN KEY (`team`) REFERENCES `team` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
  CONSTRAINT `team_person_ibfk_2` FOREIGN KEY (`person`) REFERENCES `person` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci ROW_FORMAT=COMPACT
+;
+
+CREATE OR REPLACE VIEW `scheduling_group_team_players` AS
+SELECT s.scheduling_group, s.team, t.title, p.id, p.sort_name
+FROM `scheduling_group_team` s
+JOIN team t ON t.ID = s.team
+JOIN team_person tp ON tp.team = s.team
+JOIN person_summary p ON p.id = tp.person
+ORDER BY s.scheduling_group
 ;
 
 DROP TABLE IF EXISTS  `tournament`;
@@ -185,8 +194,8 @@ DROP TABLE IF EXISTS  `tournament_person` ;
 CREATE TABLE `tournament_person` (
  `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
  `person` int(10) unsigned NOT NULL COMMENT 'FK to Person ID',
- `status` varchar(10) COLLATE utf8_unicode_ci DEFAULT 'registered' COMMENT 'Participant status',
- `primary_role` varchar(128) COLLATE utf8_unicode_ci DEFAULT 'player' COMMENT 'role(s), e.g., player, coach, volunteer ID. Implicit FK to civicrm_option_value where option_group = participant_role.',
+ `status` varchar(10) COLLATE utf8_unicode_ci DEFAULT 'Registered' COMMENT 'Participant status',
+ `primary_role` varchar(128) COLLATE utf8_unicode_ci DEFAULT 'Player' COMMENT 'role(s), e.g., player, coach, volunteer ID. Implicit FK to civicrm_option_value where option_group = participant_role.',
 -- `registered_by` int(10) unsigned DEFAULT NULL,
 -- `register_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'When did contact register for event?',
  PRIMARY KEY (`tournament`,`person`),
@@ -205,13 +214,13 @@ CREATE TABLE `tournament_person` (
 
 CREATE OR REPLACE VIEW `registered_tournament_players` AS
 SELECT tp.`tournament` , tp.`person` , p.sort_name, p.age FROM `tournament_person` tp JOIN person_summary p ON p.id = tp.person
-WHERE `status` = 'registered' AND `primary_role` = 'player'
+WHERE `status` = 'Registered' AND `primary_role` = 'Player'
 ;
 
 CREATE TABLE `tournament_team` (
  `tournament` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
  `team` int(10) unsigned NOT NULL COMMENT 'FK to Team ID',
- `status` varchar(10) COLLATE utf8_unicode_ci DEFAULT 'registered' COMMENT 'Participant status',
+ `status` varchar(10) COLLATE utf8_unicode_ci DEFAULT 'Registered' COMMENT 'Participant status',
  PRIMARY KEY (`tournament`,`team`),
  KEY `index_status_id` (`status`),
  KEY `FK_civicrm_participant_contact_id` (`team`),
@@ -299,8 +308,8 @@ DROP TABLE IF EXISTS `competition_person` ;
 CREATE TABLE `competition_person` (
  `competition` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
  `person` int(10) unsigned NOT NULL COMMENT 'FK to person',
- `status` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT 'registered',
- `role` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT 'player',
+ `status` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT 'Registered',
+ `role` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT 'Player',
  `register_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
  `source` varchar(128) COLLATE utf8_unicode_ci DEFAULT NULL COMMENT 'Source of this event registration.',
 -- `registered_by_id` int(10) unsigned DEFAULT NULL COMMENT 'FK to Participant ID',
@@ -318,7 +327,7 @@ CREATE TABLE `competition_person` (
 
 CREATE OR REPLACE VIEW `registered_competition_players` AS
 SELECT `competition` , `person` FROM `competition_person`
-WHERE `status` = 'registered' AND `role` = 'player'
+WHERE `status` = 'Registered' AND `role` = 'Player'
 ;
 
 -- Enforce unique competition per type, per person, per tournament
@@ -326,7 +335,7 @@ CREATE OR REPLACE VIEW `registered_tournament_competition_type_person` AS
 SELECT t.tournament, c.type, `person` FROM `competition_person` cp
 JOIN competition c ON cp.competition = c.id
 JOIN tournament_age_group t ON t.id = c.tournament_age_group
-WHERE `status` = 'registered'
+WHERE `status` = 'Registered'
 ;
 
 CREATE OR REPLACE VIEW  `eligible_competition_players` AS 
@@ -402,12 +411,12 @@ GROUP BY tournament, person
 ;
 
 CREATE OR REPLACE VIEW `registered_tournament_teams` AS
-SELECT tournament,team FROM `tournament_team` WHERE `status` = 'registered'
+SELECT tournament,team FROM `tournament_team` WHERE `status` = 'Registered'
 ;
 
 CREATE OR REPLACE VIEW `tournament_team_player_count` AS
 SELECT tt.tournament, tt.team, count( teamp.person ) AS player_count
-FROM `registered_tournament_teams` tt JOIN team_person teamp ON teamp.team = tt.team AND teamp.role = 'player'
+FROM `registered_tournament_teams` tt JOIN team_person teamp ON teamp.team = tt.team AND teamp.role = 'Player'
 JOIN registered_tournament_players p ON p.tournament = tt.tournament AND p.person = teamp.person
 GROUP BY tt.team
 ;
@@ -710,6 +719,34 @@ INSERT IGNORE INTO team_group_xref( team, civicrm_group ) SELECT t.`id` , cg.id 
 END
 //
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `update_scheduling_group_teams`;
+CREATE PROCEDURE `update_scheduling_group_teams`() NO SQL DETERMINISTIC
+INSERT IGNORE INTO scheduling_group_team(scheduling_group, team) 
+SELECT x.scheduling_group, c.team FROM civicrm_scheduling_group_teams c
+JOIN scheduling_group_xref x ON x.civicrm_group = c.scheduling_group
+;
+
+DROP PROCEDURE IF EXISTS `update_team_person`;
+CREATE PROCEDURE `update_team_person` ( ) DETERMINISTIC NO SQL SQL SECURITY DEFINER 
+INSERT IGNORE INTO `team_person` ( team, person )
+SELECT gx.team, pcx.person
+FROM `civicrm_group_contact` cgc
+JOIN team_group_xref gx ON gx.civicrm_group = cgc.`group_id`
+JOIN person_contact_xref pcx ON pcx.person = cgc.`contact_id` 
+;
+
+CREATE PROCEDURE `update_tournament_person` ( ) DETERMINISTIC NO SQL SQL SECURITY DEFINER INSERT IGNORE INTO tournament_person( tournament, person,
+STATUS , primary_role )
+SELECT tx.tournament, px.person, civicrm_participant_status_type.label, v.label
+FROM `civicrm_participant`
+JOIN tournament_event_xref tx ON tx.event = event_id
+JOIN person_contact_xref px ON px.contact = contact_id
+JOIN civicrm_participant_status_type ON status_id = civicrm_participant_status_type.id
+JOIN civicrm_option_value v ON v.value = role_id
+JOIN civicrm_option_group g ON g.id = v.option_group_id
+WHERE g.name = 'participant_role'
+;
 
 /*
 
