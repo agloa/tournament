@@ -1,0 +1,47 @@
+<div class="crm-container">
+  <div crm-ui-debug="model"></div>
+
+  <h1 crm-page-title>{{ts('Test')}}</h1>
+
+  <form id="modelForm" crm-ui-id-scope>
+
+    <div class="help">
+      <p>{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</p>
+    </div>
+
+    <table>
+      <tr ng-repeat="opt in countries">
+        <td>{{ opt.id }}</td>
+        <td>{{ opt.name }}</td>
+      </tr>
+    </table>
+
+    <table>
+      <tr ng-repeat="option in genders">
+        <td>{{ option.value }}</td>
+        <td>{{ option.label }}</td>
+      </tr>
+    </table>
+
+    <div crm-ui-accordion="{title: ts('Model'), collapsed: true}" >
+      <div class="crm-block">
+        <div class="crm-group">
+          <div
+            <label crm-ui-for="modelForm.gender_id">{{ts('Gender')}}</label>
+            <select crm-ui-id="modelForm.gender_id" name="gender_id"
+              class="big crm-form-select"
+              crm-ui-select="{placeholder: '', allowClear:true}"
+              ng-options="option.label for option in genders track by option.value"
+              ng-model="model.gender_id">
+            </select> 
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+</div>
+
+</form>
+
+</div>

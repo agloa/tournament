@@ -1,0 +1,92 @@
+<main class="crm-container">
+  <header>
+  <div crm-ui-debug="selectedPerson"></div>
+  <h1 crm-page-title>{{ts('Tournament > Person > %1', {1: selectedPerson.display_name})}}</h1>
+  </header>
+  <form name="personForm" crm-ui-id-scope autocomplete>
+
+    <div class="help">{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</div>
+
+    <div class="crm-block">
+      <div crm-ui-field="{name: 'personForm.last_name', title: ts('Name'), help: hs('full_name')}">
+        <label crm-ui-for="personForm.prefix_id" class="sr-only">{{ts('Prefix')}}</label>
+        <select crm-ui-id="personForm.prefix_id" name="prefix_id" class="crm-form-select"
+          crm-ui-select="{placeholder: '', allowClear:true}"
+          ng-options="option.label for option in prefixes track by option.value"
+          ng-model="selectedPerson.prefix_id">
+        </select> 
+        <label crm-ui-for="personForm.first_name" class="sr-only">{{ts('First')}}</label>
+        <input crm-ui-id="personForm.first_name" name="first_name"
+          ng-model="selectedPerson.first_name" class="crm-form-text"
+          placeholder="{{ts('First')}}" required> 
+        </input> 
+        <label crm-ui-for="personForm.last_name" class="sr-only">{{ts('Last')}}</label>
+        <input
+          crm-ui-id="personForm.last_name" name="last_name"
+          ng-model="selectedPerson.last_name" class="crm-form-text"
+          placeholder="{{ts('Last')}}" required>
+        </input> 
+        <label crm-ui-for="personForm.middle_name" class="sr-only">{{ts('Middle')}}</label>
+        <input
+          crm-ui-id="personForm.middle_name" name="middle_name"
+          ng-model="selectedPerson.middle_name" class="crm-form-text"
+          placeholder="{{ts('Middle')}}"> 
+        </input> 
+        <label crm-ui-for="personForm.suffix_id" class="sr-only">{{ts('Suffix')}}</label>
+        <select
+          crm-ui-id="personForm.suffix_id" name="suffix_id"
+          class="crm-form-select"
+          crm-ui-select="{placeholder: '', allowClear:true}"
+          ng-options="option.label for option in suffixes track by option.value"
+          ng-model="selectedPerson.suffix_id">
+        </select>
+      </div>
+
+      <div crm-ui-field="{name: 'personForm.gender_id', title: ts('Extra Identification'), help: hs('extra_identification')}">
+        <label crm-ui-for="personForm.birth_date" class="sr-only"> {{ts('Birth Date')}}</label>
+        <input crm-ui-id="personForm.birth_date" 
+          name="birth_date" ng-model="selectedPerson.birth_date"
+          crm-ui-datepicker="{time: false, minDate: '1900-01-01', maxDate: '2100-01-01'}" />
+        <label crm-ui-for="personForm.gender_id" class="sr-only">{{ts('Gender')}}</label>
+        <select crm-ui-id="personForm.gender_id"
+          name="gender_id" class="crm-form-select"
+          crm-ui-select="{placeholder: '', allowClear:true}"
+          ng-options="option.label for option in genders track by option.value"
+          ng-model="selectedPerson.gender_id">
+        </select>
+      </div>
+
+      <div crm-ui-field="{name: 'personForm.email', title: ts('Communications'), help: hs('Communications')}">
+        <label crm-ui-for="personForm.email" class="sr-only">{{ts('Email')}}</label>
+        <input crm-ui-id="personForm.email" name="email" type="email"
+          ng-model="selectedPerson.email" class="crm-form-text big"
+          placeholder="{{ts('email')}}" > 
+        </input>              
+        <label crm-ui-for="personForm.phone" class="sr-only">{{ts('Phone')}}</label>
+        <input crm-ui-id="personForm.phone" name="phone" type="tel"
+          ng-model="selectedPerson.phone" class="crm-form-text"
+          placeholder="{{ts('phone')}}" > 
+        </input> 
+      </div>
+         
+      <button ng-click="save()">{{ts('Save')}}</button>
+      <div>
+        Tap/click <a
+          href="admin.php?page=CiviCRM&q=civicrm/a/#/tournament/address/{{selectedPerson.address_id}}"
+          target="_blank"
+          title="Open the address record in a new tab/window.">here</a> to view address data.
+      </div>
+      <div>
+        Tap/click <a
+          href="admin.php?page=CiviCRM&q=civicrm/contact/add&reset=1&action=update&cid={{selectedPerson.contact_id}}"
+          target="_blank"
+          title="Open the full contact record in a new tab/window.">here</a> for even more contact details.
+      </div>
+    </div>
+<!-- TODO: This should only be visible for billing contacts. -->
+    Tap/click <a
+      href="admin.php?page=CiviCRM&q=civicrm/a/#/tournament/billingOrganizations/{{selectedPerson.contact_id}}" target="_blank"
+      title="Open a list of billing organizations in a new tab/window.">here</a> to view billing organization(s).
+
+  </form>
+</main>

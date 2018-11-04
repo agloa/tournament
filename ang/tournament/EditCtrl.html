@@ -1,0 +1,100 @@
+<div class="crm-container">
+  <div crm-ui-debug="myContact"></div>
+
+  <h1 crm-page-title>{{ts('Tournament Administration')}}</h1>
+
+  <form name="tournamentForm" crm-ui-id-scope>
+
+    <div class="help">
+      <p>{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</p>
+    </div>
+
+    <div crm-ui-accordion="{title: ts('Greeting')}">
+      <p ng-show="myContact.first_name">{{ ts('Welcome, %1. Your ID = %2. This page should
+        be all you need for: ', {1: myContact.first_name, 2: myContact.contact_id}) }}</p>
+
+      <p ng-show="!myContact.first_name">{{ ts('Welcome, visitor. Click here
+        to apply for an account.') }}</p>
+    </div>
+
+    <div crm-ui-accordion="{title: ts('Your contact record.'), collapsed: false}" >
+      <div class="crm-block">
+        <div class="crm-group">
+          <div
+            crm-ui-field="{name: 'tournamentForm.last_name', title: ts('Name'), help: hs('full_name')}">
+            <label crm-ui-for="tournamentForm.prefix_id">{{ts('Prefix')}}</label>
+            <select crm-ui-id="tournamentForm.prefix_id" name="prefix_id"
+              class="big crm-form-select"
+              crm-ui-select="{placeholder: '', allowClear:true}"
+              ng-options="option.label for option in prefixes track by option.value"
+              ng-model="myContact.prefix_id">
+            </select> 
+            <label crm-ui-for="tournamentForm.first_name">{{ts('First')}}</label>
+            <input crm-ui-id="tournamentForm.first_name" name="first_name"
+              ng-model="myContact.first_name" class="crm-form-text"
+              placeholder="{{ts('First')}}" required> 
+              </input> 
+            <label crm-ui-for="tournamentForm.last_name">{{ts('Last')}}</label>
+              <input
+              crm-ui-id="tournamentForm.last_name" name="last_name"
+              ng-model="myContact.last_name" class="crm-form-text"
+              placeholder="{{ts('Last')}}" required> </input> 
+        <label crm-ui-for="tournamentForm.middle_name">{{ts('Middle')}}</label>
+        <input
+              crm-ui-id="tournamentForm.middle_name" name="middle_name"
+              ng-model="myContact.middle_name" class="crm-form-text"
+              placeholder="{{ts('Middle')}}"> </input> 
+              <label crm-ui-for="tournamentForm.suffix_id">{{ts('Suffix')}}</label>
+<select
+              crm-ui-id="tournamentForm.suffix_id" name="suffix_id"
+              class="big crm-form-select"
+              crm-ui-select="{placeholder: '', allowClear:true}"
+              ng-options="option.label for option in suffixes track by option.value"
+              ng-model="myContact.suffix_id">
+            </select>
+          </div>
+
+          <div crm-ui-field="{name: 'tournamentForm.gender_id', title: ts('Extra Identification'), help: hs('extra_identification')}">
+            
+        <label crm-ui-for="tournamentForm.birth_date"> {{ts('Birth Date')}}</label>
+            <input crm-ui-id="tournamentForm.birth_date"
+              name="birth_date" ng-model="myContact.birth_date"
+              crm-ui-datepicker="{time: false, minDate: '1900-01-01', maxDate: '2100-01-01'  }" />
+            {{ts('Gender')}} <select crm-ui-id="tournamentForm.gender_id"
+              name="gender_id" class="big crm-form-select"
+              crm-ui-select="{placeholder: '', allowClear:true}"
+              ng-options="option.label for option in genders track by option.value"
+              ng-model="myContact.gender_id">
+            </select>
+          </div>
+
+          <div
+            crm-ui-field="{name: 'tournamentForm.email', title: ts('Communications'), help: hs('Communications')}">
+             <label crm-ui-for="tournamentForm.email"> {{ts('Email')}}</label>
+            <input crm-ui-id="tournamentForm.email" name="email"
+              ng-model="myContact.email" class="crm-form-text"
+              placeholder="{{ts('email')}}" required> 
+              </input>              
+              {{ts('Phone')}} <input crm-ui-id="tournamentForm.phone" name="phone"
+              ng-model="myContact.phone" class="crm-form-text"
+              placeholder="{{ts('phone')}}" required> 
+              </input> 
+          </div>
+         
+          <div>
+            Tap/click <a
+              href="admin.php?page=CiviCRM&q=civicrm/contact/add&reset=1&action=update&cid={{myContact.contact_id}}"
+              target="_blank"
+              title="Open your full contact record in a new tab/window.">here</a> for even more contact details.
+          </div>
+          <div>
+            <button ng-click="save()">{{ts('Save')}}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+</form>
+
+</div>
