@@ -1,43 +1,28 @@
 (function(angular, $, _) {
-
   angular.module('tournament').config(function($routeProvider) {
-      $routeProvider.when('/tournament/person/:contact_id?', {
-        controller: 'TournamentPersonCtrl',
-        templateUrl: '~/tournament/PersonCtrl.html',
+    $routeProvider.when('/tournament/person/:contact_id?', {
+      controller: 'TournamentPersonCtrl',
+      templateUrl: '~/tournament/PersonCtrl.html',
 
-        // If you need to look up data when opening the page, list it out under "resolve".
-        resolve: {
-          selectedPerson: function(crmApi, $route) {
-            var contact_id = "user_contact_id";
-            if ($route.current.params.contact_id > 0) contact_id = $route.current.params.contact_id;
-       	    return crmApi('Contact', 'getsingle', {
-              id: contact_id,
-              return: ["prefix_id"
-                       ,"first_name"
-                       , "middle_name"
-                       , "last_name"
-                       , "display_name"
-                       , "suffix_id"
-                       , "birth_date"
-                       , "gender_id"
-                       , "email" // TODO: This is not required for all persons, so probably needs its own form.
-                       , "phone" // TODO: This is not required for all persons, so probably needs its own form.
-                       , "address_id"]
-            }).then(
-                // Success
-                function(result) { return result; },
-                // Failure
-                function () { CRM.alert(ts('No contact record exists with an ID of %1', {1: $route.current.params.contact_id}),ts('Not Found'),'error'); }
-	     );
-          },
+      // If you need to look up data when opening the page, list it out under "resolve".
+      resolve: {
+        selectedPerson: function(crmApi, $route) {
+          var contact_id = "user_contact_id";
+          if ($route.current.params.contact_id > 0) contact_id = $route.current.params.contact_id;
+    	    return getPerson(crmApi, contact_id, 
+            ["prefix_id","first_name", "middle_name", "last_name", "display_name", "suffix_id", "birth_date" , "gender_id" , "address_id"
+             , "email" // TODO: This is not required for all persons, so probably needs its own form.
+             , "phone" // TODO: This is not required for all persons, so probably needs its own form.
+            ]
+          );
+        },
 
-          genders:  function(crmApi) { return crmApiOptionValues(crmApi, "gender"); },
-          prefixes: function(crmApi) { return crmApiOptionValues(crmApi, "individual_prefix");},
-          suffixes: function(crmApi) { return crmApiOptionValues(crmApi, "individual_suffix");},
-	}
-      });
-    }
-  );
+        genders:  function(crmApi) { return crmApiOptionValues(crmApi, "gender"); },
+        prefixes: function(crmApi) { return crmApiOptionValues(crmApi, "individual_prefix");},
+        suffixes: function(crmApi) { return crmApiOptionValues(crmApi, "individual_suffix");},
+      }
+    });
+  });
   
   function crmApiOptionValues(crmApi, option_group_id) {
 	  return crmApi('OptionValue', 'get', {
