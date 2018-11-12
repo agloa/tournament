@@ -1,0 +1,39 @@
+<div class="crm-container">
+  <div crm-ui-debug="selectedContact"></div>
+
+  <h1 crm-page-title>{{ts('Tournament > Billing Organization > %1', {1: selectedContact.organization_name})}}</h1>
+
+  <form name="organizationForm" crm-ui-id-scope>
+
+    <div class="help">
+      {{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}
+    </div>
+
+    <div class="crm-block">
+      <label crm-ui-for="organizationForm.organization_name" class="sr-only">{{ts('Name')}}</label>
+      <input crm-ui-id="organizationForm.organization_name" name="organization_name"
+        ng-model="selectedContact.organization_name" class="crm-form-text" placeholder="{{ts('Name')}}" required>
+      </input> 
+
+      <label crm-ui-for="organizationForm.email"> {{ts('Email')}}</label>
+      <input crm-ui-id="organizationForm.email" name="email"
+        ng-model="selectedContact.email" class="crm-form-text big"  placeholder="{{ts('email')}}" required>
+      </input>              
+        
+      <label crm-ui-for="organizationForm.phone">{{ts('Phone')}}</label>
+      <input crm-ui-id="organizationForm.phone" name="phone"
+         ng-model="selectedContact.phone" class="crm-form-text" placeholder="{{ts('phone')}}" required>
+      </input> 
+         
+      <div>
+        <button ng-click="save()">{{ts('Save')}}</button>
+      </div>
+          
+      Tap/click <a
+        href="admin.php?page=CiviCRM&q=civicrm/contact/add&reset=1&action=update&cid={{selectedContact.contact_id}}"
+        target="_blank"
+        title="Open the full contact record in a new tab/window.">here</a> for even more contact details.
+    </div>
+
+  </form>
+</div>

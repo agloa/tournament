@@ -1,0 +1,72 @@
+// Is this an anonymous function?
+// I guess angular is the namespace?
+// $ is probably the jQuery document?
+// _ is usually private?
+(function(angular, $, _) {
+  // Add this controller to the module configuration.
+  angular.module('tournament').config(function($routeProvider) {
+      $routeProvider.when('/tournament/test', {
+        controller: 'TournamentTest',
+        templateUrl: '~/tournament/Test.html',
+
+        // Look up data when opening the page, list it out under "resolve".
+        resolve: {
+          model: function(crmApi) { return {gender_id: 2}; },
+          genders: function(crmApi) {
+            return crmApiOptionValues(crmApi, "gender");
+          },
+
+          countries: function(crmApi) {
+            return crmApi('Setting', 'get', {"sequential": 1, "return": ["countryLimit"]})
+              .then(function(result) {
+                // Success
+                return crmApi('Country', 'get', {
+                              "sequential": 1,
+                              "id": {"IN":result.values[0].countryLimit},
+                              "return": ["id","name"],
+                              "options": {"limit":0}
+                             })
+                       .then(function(result) {
+                         return result.values;
+                       }),
+                        function () {
+                          CRM.alert(ts('Unable to expand available countries.'), ts('Not Found'),'error');
+                        };
+             }),
+               // error
+               function () {
+                 CRM.alert(ts('Unable to retrieve available countries.'), ts('Not Found'),'error');
+               };
+          },
+
+	}
+      });
+    }
+  );
+
+  // The controller uses *injection*. This default injects a few things:
+  // $scope -- This is the set of variables shared between JS and HTML.
+  // crmApi, crmStatus, crmUiHelp -- These are services provided by civicrm-core.
+  angular.module('tournament').controller('TournamentTest', 
+    function($scope, crmApi, crmStatus, crmUiHelp, model, genders, countries) {
+      // The ts() and hs() functions help load strings for this module.
+      var ts = $scope.ts = CRM.ts('tournament');
+	   
+      // We have variables available in JS. We also want to reference them in HTML.
+      $scope.model = model;
+      $scope.genders = genders;
+      $scope.countries = countries;
+    }
+  );
+
+  // TODO: move to util file?
+  function crmApiOptionValues(crmApi, option_group_id) {
+    return crmApi('OptionValue', 'get', { "sequential": 1,"return": ["value","label"],"option_group_id": option_group_id}
+	).then(function(result) {
+          return result.values;
+        });
+  }
+})
+
+// Call the defined function
+(angular, CRM.$, CRM._);
