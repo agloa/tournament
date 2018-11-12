@@ -1,0 +1,29 @@
+<div class="crm-container">
+  <div crm-ui-debug="billingOrganizations"></div>
+
+  <h1 crm-page-title>{{ts('Tournament: Billing Organizations for contact ')}}</h1>
+
+  <form name="billingOrganizationsForm" crm-ui-id-scope>
+
+    <div class="help">
+      <p>{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</p>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Billing Organization</th>
+        </tr>
+      </thead>
+
+      <tr ng-repeat="organization in billingOrganizations">
+        <td>
+          <a target="_blank" href="admin.php?page=CiviCRM&q=civicrm/a/#/tournament/billingOrganization/{{organization['contact_id_b.id']}}" 
+             title="Tap/click to update billing organization.">{{ organization["contact_id_b.display_name"]}}
+          </a>
+        </td>
+      </tr>
+    </table>
+
+  </form>
+</div>

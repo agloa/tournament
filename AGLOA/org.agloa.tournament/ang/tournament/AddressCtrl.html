@@ -1,0 +1,93 @@
+<div class="crm-container">
+  <div crm-ui-debug="selectedAddress"></div>
+
+  <h1 crm-page-title>{{ts('Tournament: Address ')}}</h1>
+
+  <form name="addressForm" crm-ui-id-scope>
+
+    <div class="help">
+      <p>{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</p>
+    </div>
+
+    <div crm-ui-accordion="{title: ts('Address'), collapsed: false, help: hs('address')}" >
+      <div class="crm-block">
+        <div class="crm-group">
+          <div>
+            <label crm-ui-for="addressForm.street_address">{{ts('Address')}}</label>
+            <input crm-ui-id="addressForm.street_address" name="street_address"
+              ng-model="selectedAddress.street_address" class="crm-form-text"
+              placeholder="{{ts('Address')}}" required> 
+            </input> 
+            <label crm-ui-for="addressForm.supplemental_address_1" class="sr-only">{{ts('Address 1')}}</label>
+            <input crm-ui-id="addressForm.supplemental_address_1" name="supplemental_address_1"
+              ng-model="selectedAddress.supplemental_address_1" class="crm-form-text"
+              placeholder="{{ts('cont.')}}" > 
+            </input> 
+            <label crm-ui-for="addressForm.supplemental_address_2" class="sr-only">{{ts('Address 2')}}</label>
+            <input crm-ui-id="addressForm.supplemental_address_2" name="supplemental_address_2"
+              ng-model="selectedAddress.supplemental_address_2" class="crm-form-text"
+              placeholder="{{ts('cont.')}}" > 
+            </input> 
+            <label crm-ui-for="addressForm.supplemental_address_3" class="sr-only">{{ts('Address 3')}}</label>
+            <input crm-ui-id="addressForm.supplemental_address_3" name="supplemental_address_3"
+              ng-model="selectedAddress.supplemental_address_3" class="crm-form-text"
+              placeholder="{{ts('cont.')}}" > 
+            </input> 
+          </div>
+
+          <div>
+            <label crm-ui-for="addressForm.city">{{ts('City')}}</label>
+            <input
+              crm-ui-id="addressForm.city" name="city"
+              ng-model="selectedAddress.city" class="crm-form-text"
+              placeholder="{{ts('City')}}" required> 
+            </input> 
+            <label crm-ui-for="addressForm.country_id">{{ts('Country')}}</label>
+            <select crm-ui-id="addressForm.country_id" name="country_id"
+              class="big crm-form-select"
+              crm-ui-select="{placeholder: '', allowClear:true}"
+              ng-options="option.name for option in countries track by option.id"
+              ng-model="selectedAddress.country_id">
+            </select>
+            <div ng-show="selectedAddress.country_id" class="inline">
+              <label crm-ui-for="addressForm.state_province_id">{{ts('State/Province')}}</label>
+              <select crm-ui-id="addressForm.state_province_id" name="state_province_id"
+                class="big crm-form-select"
+                crm-ui-select="{placeholder: '', allowClear:true}"
+                ng-options="option.name for option in regions | filter:{country_id:selectedAddress.country_id} track by option.id"
+                ng-model="selectedAddress.state_province_id">
+              </select>
+            </div>
+          </div>
+          <div>
+            <label crm-ui-for="addressForm.postal_code">{{ts('Postal Code')}}</label>
+            <input
+              crm-ui-id="addressForm.postal_code" name="postal_code"
+              ng-model="selectedAddress.postal_code" class="crm-form-text"
+              placeholder="{{ts('Postal Code')}}" required> 
+            </input> 
+            <label crm-ui-for="addressForm.postal_code_suffix">{{ts('Postal Code Suffix')}}</label>
+            <input
+              crm-ui-id="addressForm.postal_code_suffix" name="postal_code_suffix"
+              ng-model="selectedAddress.postal_code_suffix" class="crm-form-text"
+              placeholder="{{ts('Postal Code Suffix')}}" > 
+            </input> 
+          </div>
+        </div>
+         
+        <div>
+          <button ng-click="save()">{{ts('Save')}}</button>
+        </div>
+        <div>
+          Tap/click <a
+            href="admin.php?page=CiviCRM&q=civicrm/contact/add&reset=1&action=update&cid={{selectedAddress.contact_id}}"
+            target="_blank"
+            title="Open the full contact record in a new tab/window.">here</a> for full contact details.
+        </div>
+        </div>
+      </div>
+    </div>
+
+  </form>
+
+</div>

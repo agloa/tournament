@@ -1,0 +1,55 @@
+<div class="crm-container">
+  <div crm-ui-debug="model"></div>
+
+  <h1 crm-page-title>{{ts('Test')}}</h1>
+
+  <form id="modelForm" crm-ui-id-scope>
+
+    <div class="help">
+      <p>{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</p>
+    </div>
+
+    <table>
+      <tr ng-repeat="option in regions">
+        <td>{{ option.id }}</td>
+        <td>{{ option.name }}</td>
+      </tr>
+    </table>
+
+    <table>
+      <tr ng-repeat="option in countries">
+        <td>{{ option.id }}</td>
+        <td>{{ option.name }}</td>
+      </tr>
+    </table>
+
+    <div crm-ui-accordion="{title: ts('Model'), collapsed: true}" >
+      <div class="crm-block">
+        <div class="crm-group">
+          <div
+            <label crm-ui-for="modelForm.country_id">{{ts('Countries')}}</label>
+            <select crm-ui-id="modelForm.country_id" name="country_id"
+              class="big crm-form-select"
+              crm-ui-select="{placeholder: '', allowClear:true}"
+              ng-options="option.name for option in countries track by option.id"
+              ng-model="model.country_id">
+            </select> 
+          </div>
+          <div
+            <label crm-ui-for="modelForm.state_province_id">{{ts('State/Province')}}</label>
+            <select crm-ui-id="modelForm.state_province_id" name="state_province_id"
+              class="big crm-form-select"
+              crm-ui-select="{placeholder: '', allowClear:true}"
+              ng-options="option.name for option in regions track by option.id"
+              ng-model="model.state_province_id">
+            </select> 
+          </div>
+
+        </div>
+      </div>
+    </div>
+</div>
+
+</form>
+
+</div>

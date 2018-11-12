@@ -1,0 +1,31 @@
+<main class="crm-container">
+  <div crm-ui-debug="selectedUser"></div>
+
+  <header>
+  <h1 crm-page-title>{{ts('Tournament > User > %1', {1: selectedUser.display_name})}}</h1>
+  </header>
+
+  <details class="help" open>
+   <summary>{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</summary>
+  </details>
+
+    <p ng-show="selectedUser.first_name">{{ ts('Welcome, %1. Your ID = %2. This page should
+      be all you need for tournament registration.', {1: selectedUser.first_name, 2: selectedUser.contact_id}) }}</p>
+
+    <p ng-show="!selectedUser.first_name">{{ ts('Welcome, visitor. Click ')}} 
+      <a target="_blank" href="districtsignup">{{ ts('here')}}</a>{{ ts(' to apply for an account: ') }} 
+    </p>
+One page load per task.
+  <nav>
+    <ul>
+      <li>Tap/click <a target="_blank"
+      href="admin.php?page=CiviCRM&q=civicrm%2Fa%2F#/tournament/person/{{selectedUser.contact_id}}"
+      title="Open the contact record in a new tab/window.">here</a> for contact details.
+      </li>
+      <li>Billing Organizations</li>
+      <li>Registration Groups</li>
+      <li>This year's participants</li>
+      <li>This year's teams</li>
+    </ul>
+  </nav>
+</main>
