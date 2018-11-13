@@ -1,0 +1,127 @@
+<?xml version="1.0"?>
+<!DOCTYPE menu>
+<menu>
+  <item>
+    <path>civicrm/tournament/register</path>
+    <page_callback>CRM_Tournament_Controller_Registration</page_callback>
+    <title>Tournament Registration</title>
+    <access_callback>1</access_callback>
+    <is_public>true</is_public>
+    <is_ssl>true</is_ssl>
+  </item>
+  <item>
+    <path>civicrm/tournament/confirm</path>
+    <page_callback>CRM_Tournament_Form_Registration_ParticipantConfirm</page_callback>
+    <title>Registration_ParticipantConfirm</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/ical</path>
+    <page_callback>CRM_Tournament_Page_ICalendar</page_callback>
+    <title>Current and Upcoming Events</title>
+    <access_arguments>view event info</access_arguments>
+    <is_public>true</is_public>
+    <weight>0</weight>
+  </item>
+  <item>
+    <path>civicrm/tournament/participant</path>
+    <page_callback>CRM_Tournament_Page_ParticipantListing</page_callback>
+    <title>Tournament Participants List</title>
+    <access_arguments>view event participants</access_arguments>
+    <is_public>true</is_public>
+    <weight>0</weight>
+  </item>
+  <item>
+    <path>civicrm/admin/tournament</path>
+    <page_callback>CRM_Tournament_Page_ManageTournament</page_callback>
+    <title>Manage Tournaments</title>
+    <access_arguments>access CiviCRM,access CiviEvent</access_arguments>
+    <desc>Create and edit tournament configuration including times, locations, online registration forms, and fees. Links for iCal and RSS syndication.</desc>
+    <adminGroup>Tournament</adminGroup>
+    <icon>admin/small/event_manage.png</icon>
+    <weight>370</weight>
+  </item>
+  <item>
+    <path>civicrm/tournament/registration</path>
+    <page_callback>CRM_Tournament_Page_Registration</page_callback>
+    <title>Registration Dashboard</title>
+    <access_arguments>access CiviCRM,access CiviEvent</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/BillingContact</path>
+    <page_callback>CRM_Tournament_Form_BillingContact</page_callback>
+    <title>Billing Contact</title>
+    <access_arguments>access CiviCRM,access CiviEvent</access_arguments>
+  </item>  
+  <item>
+    <path>civicrm/tournament/registration_group</path>
+    <page_callback>CRM_Tournament_Form_RegistrationGroup</page_callback>
+    <title>Registration Group</title>
+    <access_arguments>administer CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/scheduling</path>
+    <page_callback>CRM_Tournament_Page_Scheduling</page_callback>
+    <title>Scheduling</title>
+    <access_arguments>access CiviCRM,access CiviEvent</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/newmember</path>
+    <page_callback>CRM_Tournament_Page_Registration_NewMemberProcess</page_callback>
+    <title>Registration_NewMemberProcess</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/participant/add</path>
+    <page_callback>CRM_Tournament_Form_Participant</page_callback>
+    <title>Participant</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/team</path>
+    <page_callback>CRM_Tournament_Team_Page_Team</page_callback>
+    <title>Teams</title>
+    <access_arguments>edit groups</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/team/search</path>
+    <page_callback>CRM_Tournament_Team_Form_Search</page_callback>
+    <title>Find Teams</title>
+    <access_arguments>edit groups</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/team/add</path>
+    <page_callback>CRM_Tournament_Team_Controller</page_callback>
+    <title>New Team</title>
+    <access_arguments>edit groups</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/team/editPlayers</path>
+    <page_callback>CRM_Tournament_Player_Form_Task_AddToTeam</page_callback>
+    <title>Add Players to Team</title>
+    <access_arguments>edit groups</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/ajax/teamlist</path>
+    <page_callback>CRM_Tournament_Team_Page_AJAX::getTeamList</page_callback>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/BaseForm</path>
+    <page_callback>CRM_Tournament_Form_BaseForm</page_callback>
+    <title>BaseForm</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/my-page</path>
+    <page_callback>CRM_Tournament_Page_MyPage</page_callback>
+    <title>MyPage</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/tournament/user</path>
+    <page_callback>CRM_Tournament_Page_User</page_callback>
+    <title>Logged In User</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+</menu>

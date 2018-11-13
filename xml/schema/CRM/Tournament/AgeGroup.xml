@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+
+<table>
+  <base>CRM/Tournament</base>
+  <class>AgeGroup</class>
+  <name>age_group</name>
+  <comment>Tournament competitions are usually grouped by age</comment>
+  <add>4.4</add>
+  <log>true</log>
+
+  <field>
+    <name>id</name>
+    <type>int unsigned</type>
+    <required>true</required>
+    <comment>maximum age for this group</comment>
+    <add>4.4</add>
+  </field>
+  <primaryKey>
+    <name>id</name>
+    <autoincrement>false</autoincrement>
+  </primaryKey>
+
+  <field>
+    <name>label</name>
+    <type>varchar</type>
+    <length>512</length>
+    <required>true</required>
+    <comment>External Name</comment>
+    <add>4.4</add>
+  </field>
+
+  <field>
+    <name>name</name>
+    <type>varchar</type>
+    <length>512</length>
+    <required>true</required>
+    <comment>Internal Name</comment>
+    <add>4.4</add>
+
+  <field>
+    <name>description</name>
+    <type>varchar</type>
+    <length>255</length>
+    <comment>Optional verbose description</comment>   
+    <html>
+      <type>TextArea</type>
+      <rows>5</rows>
+      <cols>80</cols>
+    </html>
+    <add>4.4</add>
+  </field>
+
+</table>
