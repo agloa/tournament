@@ -1,0 +1,12 @@
+{htxt id="full_name"}
+{ts}We need your full name for unique identification. First and last at minimum.{/ts}
+{/htxt}
+
+{htxt id="extra_identification"}
+{ts}Birth Date helps with age verification. Gender helps with rooming assignments.{/ts}
+{/htxt}
+
+{htxt id="Communications"}
+{ts}What email should we use before the tournament? What phone should we call if we need to contact you at the tournaments?{/ts}
+{/htxt}
+

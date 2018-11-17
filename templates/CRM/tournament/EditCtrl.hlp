@@ -1,0 +1,12 @@
+{htxt id="full_name"}
+{ts}First and last are required. The other help make the reduce the likelihood of duplicates.{/ts}
+{/htxt}
+{htxt id="extra_identification"}
+{ts}Gender and DOB are optional, but helpful for unique identification, age group verification, and housing.{/ts}
+{/htxt}
+{htxt id="Communications"}
+{ts}What's the best way to contact you now, then at the tournament?{/ts}
+{/htxt}
+{htxt id="BillingAddress"}
+{ts}Where should we mail, e.g., invoices, certificates, trophies, etc.?{/ts}
+{/htxt}
