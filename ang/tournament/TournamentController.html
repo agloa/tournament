@@ -1,0 +1,18 @@
+<div class="crm-container">
+  <div crm-ui-debug="currentUser"></div>
+
+  <h1 crm-page-title>{{ts('Tournament Dashboard')}}</h1>
+
+  <div class="help">
+    <p>{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</p>
+  </div>
+
+  <p ng-show="currentUser.first_name">{{ ts('Welcome, ') }} 
+     <a ng-click="showPopup()" title="Your contact data was last updated on {{currentUser.modified_date}}">
+     {{currentUser.display_name}}</a>
+    {{ts('. The links on this page (and the Tournament navigation menu above) will guide you through the steps of tournament registration.')}}
+  </p>
+
+  <p ng-show="!currentUser.first_name">{{ ts('You are not authorized to access this page.') }}</p>
+  <!-- Use a custom component to render a list of people -->
+</div>

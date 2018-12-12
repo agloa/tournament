@@ -1,8 +1,9 @@
 <main class="crm-container">
   <header>
-  <div crm-ui-debug="selectedPerson"></div>
-  <h1 crm-page-title>{{ts('Tournament > Person > %1', {1: selectedPerson.display_name})}}</h1>
+    <div crm-ui-debug="selectedPerson"></div>
+    <h1 crm-page-title>{{ts('Tournament > Person > %1', {1: selectedPerson.display_name})}}</h1>
   </header>
+  
   <form name="personForm" crm-ui-id-scope autocomplete>
 
     <div class="help">{{ts('To view more debugging information, edit the URL and include "?angularDebug=1".')}}</div>
@@ -56,23 +57,10 @@
         </select>
       </div>
 
-      <div crm-ui-field="{name: 'personForm.email', title: ts('Communications'), help: hs('Communications')}">
-        <label crm-ui-for="personForm.email" class="sr-only">{{ts('Email')}}</label>
-        <input crm-ui-id="personForm.email" name="email" type="email"
-          ng-model="selectedPerson.email" class="crm-form-text big"
-          placeholder="{{ts('email')}}" > 
-        </input>              
-        <label crm-ui-for="personForm.phone" class="sr-only">{{ts('Phone')}}</label>
-        <input crm-ui-id="personForm.phone" name="phone" type="tel"
-          ng-model="selectedPerson.phone" class="crm-form-text"
-          placeholder="{{ts('phone')}}" > 
-        </input> 
-      </div>
-         
       <button ng-click="save()">{{ts('Save')}}</button>
       <div>
         Tap/click <a
-          href="admin.php?page=CiviCRM&q=civicrm/a/#/tournament/address/{{selectedPerson.address_id}}"
+          href="admin.php?page=CiviCRM&q=civicrm/a/#/tournament/address/{{selectedPerson.address_id}}/person/{{selectedPerson.contact_id}}"
           target="_blank"
           title="Open the address record in a new tab/window.">here</a> to view address data.
       </div>

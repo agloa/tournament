@@ -43,7 +43,7 @@
               placeholder="{{ts('City')}}" required> 
             </input> 
             <label crm-ui-for="addressForm.country_id">{{ts('Country')}}</label>
-            <select crm-ui-id="addressForm.country_id" name="country_id"
+            <select required crm-ui-id="addressForm.country_id" name="country_id"
               class="big crm-form-select"
               crm-ui-select="{placeholder: '', allowClear:true}"
               ng-options="option.name for option in countries track by option.id"
@@ -51,7 +51,7 @@
             </select>
             <div ng-show="selectedAddress.country_id" class="inline">
               <label crm-ui-for="addressForm.state_province_id">{{ts('State/Province')}}</label>
-              <select crm-ui-id="addressForm.state_province_id" name="state_province_id"
+              <select required crm-ui-id="addressForm.state_province_id" name="state_province_id"
                 class="big crm-form-select"
                 crm-ui-select="{placeholder: '', allowClear:true}"
                 ng-options="option.name for option in regions | filter:{country_id:selectedAddress.country_id} track by option.id"

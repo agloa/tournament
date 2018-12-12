@@ -1,68 +1,40 @@
-// Is this an anonymous function?
-// I guess angular is the namespace function?
-// $ is the jQuery object from CRM
-// _ is a lodash utility functions object.
 (function(angular, $, _) {
   // Add this controller to the module configuration.
   angular.module('tournament').config(function($routeProvider) {
-      $routeProvider.when('/tournament/address/:address_id', {
-        controller: 'TournamentAddressCtrl',
-        templateUrl: '~/tournament/AddressCtrl.html',
+    var route = {
+      controller: 'TournamentAddressController',
+      templateUrl: '~/tournament/address/address.template.html',
 
-        // Look up data when opening the page, list it out under "resolve".
-        resolve: {
-          selectedAddress: function(crmApi, $route) {
-            return crmApi('Address', 'getsingle', {
-              id: $route.current.params.address_id,
-              return: ["contact_id"
-                       ,"location_type_id"
-                       ,"is_primary"
-                       ,"street_address"
-                       ,"supplemental_address_1"
-                       ,"supplemental_address_2"
-                       ,"supplemental_address_3"
-                       ,"city"
-                       ,"state_province_id"
-                       ,"country_id"
-                       ,"postal_code"
-                       ,"postal_code_suffix"]
-            }).then(
-                // Success
-                function(result) {
-                  return result;
-                },
-                // error
-                function () {
-                  CRM.alert(
-                    ts('No address record exists with an ID of %1', {1: $route.current.params.address_id}),
-                    ts('Not Found'),
-                    'error'
-                  );
-                }
-             );
-          },
+      // Look up data when opening the page, list it out under "resolve".
+      resolve: {
+        selectedAddress: function(crmApi, $route) { return getSelectedAddress(crmApi, $route); },
+        countries: function(crmApi) { return getCountries(crmApi); },
+        regions:   function(crmApi) { return getRegions(crmApi); },
+        person_id: function($route) { return $route.current.params.person_id; },
+        default_location_type: function(crmApi) {
+          return crmApi('LocationType', 'get', {"return": ["id"],"name": "Main"})
+            .then(function(result) {
+              return result.id;
+            });
+        },
+      }
+    };
 
-          countries: function(crmApi) {
-            return getCountries(crmApi);
-          },
-
-          regions: function(crmApi) {
-            return getRegions(crmApi);
-          },
-
-        }
-      });
-    }
-  );
+    $routeProvider.when('/tournament/address/:address_id/', route)
+      .when('/tournament/address/:address_id/person/:person_id', route)
+      .when('/tournament/address//person/:person_id', route);
+  });
 
   // The controller uses *injection*. This default injects a few things:
   //   $scope -- This is the set of variables shared between JS and HTML.
   //   crmApi, crmStatus, crmUiHelp -- These are services provided by civicrm-core.
   //   selectedAddress -- The current contact, defined above in config().
-  angular.module('tournament').controller('TournamentAddressCtrl', function($scope, crmApi, crmStatus, crmUiHelp, selectedAddress, countries, regions) {
+  angular.module('tournament').controller('TournamentAddressController', 
+    function($scope, crmApi, crmStatus, crmUiHelp, selectedAddress, countries, regions, person_id, default_location_type) {
+
     // The ts() and hs() functions help load strings for this module.
     var ts = $scope.ts = CRM.ts('tournament');
-    var hs = $scope.hs = crmUiHelp({file: 'CRM/tournament/AddressCtrl'}); // See: templates/CRM/tournament/AddressCtrl.hlp
+    var hs = $scope.hs = crmUiHelp({file: 'CRM/tournament/AddressController'}); // See: templates/CRM/tournament/AddressController.hlp
 
     // We have variables available in JS. We also want to reference them in HTML.
     $scope.selectedAddress = selectedAddress;
@@ -70,15 +42,38 @@
     $scope.regions = regions;
 
     $scope.save = function save() {
-      return crmStatus(
+      var errorMessage = "";
+
+      var address_id = selectedAddress.id;
+      var contact_id = selectedAddress.contact_id;
+      
+      if (contact_id === undefined) contact_id = person_id;
+      if (contact_id === undefined) {
+        errorMessage += "Cannon attach dddress to unknown contact. ";
+      }
+
+      var location_type_id = selectedAddress.location_type_id;
+      if (location_type_id === undefined) location_type_id = default_location_type; 
+
+      var is_primary = selectedAddress.is_primary;
+      if (is_primary === undefined) is_primary = true;
+
+      if (selectedAddress.street_address === undefined) errorMessage += "Address is required. ";
+      if (selectedAddress.city === undefined) errorMessage += "City is required. ";
+      if (selectedAddress.state_province_id === undefined) errorMessage += "State/Provice is required. ";
+      if (selectedAddress.country_id === undefined) errorMessage += "Country is required. ";
+      if (selectedAddress.postal_code === undefined) errorMessage += "Postal Code is required. ";
+
+      if (errorMessage !== "") CRM.alert(ts(errorMessage), ts('Invalid Address'),'error');
+      else return crmStatus(
         // Status messages. For defaults, just use "{}"
         {start: ts('Saving...'), success: ts('Saved')},
         // The save action. Note that crmApi() returns a promise.
         crmApi('Address', 'create', {
-          id: selectedAddress.id
-          , contact_id: selectedAddress.contact_id
-          , location_type_id: selectedAddress.location_type_id
-          , is_primary: selectedAddress.is_primary
+          id: address_id
+          , contact_id: contact_id
+          , location_type_id: location_type_id
+          , is_primary: is_primary
           , street_address: selectedAddress.street_address
           , supplemental_address_1: selectedAddress.supplemental_address_1
           , supplemental_address_2: selectedAddress.supplemental_address_2
@@ -92,6 +87,24 @@
       );
     };
   });
+
+  function getSelectedAddress(crmApi, $route){
+    var address_id = $route.current.params.address_id;
+
+    if (address_id === undefined){ return {}; } else {
+      return crmApi('Address', 'getsingle', {
+        id: address_id,
+        return: ["contact_id","location_type_id","is_primary"
+                 ,"street_address","supplemental_address_1","supplemental_address_2","supplemental_address_3"
+                 ,"city","state_province_id","country_id","postal_code","postal_code_suffix"]
+      }).then(
+        function(result) { return result;},// Success
+        function () { // error
+          CRM.alert(ts('No address record exists with an ID of %1', {1: $route.current.params.address_id}),ts('Not Found'),'error');
+        }
+      );
+    }
+  }
 
   //
   // Get the countries available for this domain.
