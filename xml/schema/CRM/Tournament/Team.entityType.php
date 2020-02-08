@@ -6,6 +6,6 @@ return array (
   array (
     'name' => 'Team',
     'class' => 'CRM_Tournament_DAO_Team',
-    'table' => 'civicrm_team',
+    'table' => 'team',
   ),
 );
