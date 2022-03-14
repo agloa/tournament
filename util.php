@@ -292,7 +292,7 @@ function civicrm_api3_get($tableName, $apiParams, $action = 'get') {
 
 		$result = civicrm_api3($tableName, $action, $apiParams);
 		if ($action == 'getsingle') return $result;
-		return $result[values];
+		return $result['values'];
 	}
 	catch (CiviCRM_API3_Exception $e) {
 		// handle error here
